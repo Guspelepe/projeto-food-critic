@@ -115,17 +115,44 @@ input[type="file"] { display: none; }
 @media (min-width: 900px) {
     body { background: var(--bg); }
 
-    /* O App ocupa a tela inteira */
+    /* Evita que as telas fiquem empilhadas */
     #app { 
         max-width: 100%; 
         height: 100vh; 
         box-shadow: none; 
         border-radius: 0;
+        display: block; /* Muda de flex para block no desktop */
     }
 
-    /* Transforma a tela principal em um Layout de Grade (Menu Esquerdo + Conteúdo Direito) */
-    #main-screen {
-        display: grid !important; /* Força o grid em cima do inline style */
+    /* Tela de login no Desktop (Centralizada) */
+    #auth-screen {
+        display: none !important; /* Esconde por padrão */
+    }
+    #auth-screen.active {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        height: 100vh;
+        width: 100vw;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 50;
+    }
+    .auth-box {
+        width: 100%;
+        max-width: 400px;
+        background: var(--surface);
+        padding: 40px;
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+
+    /* Tela Principal no Desktop (Layout de Grade) */
+    /* O seletor [style*="display: flex"] pega o estilo que o JS coloca */
+    #main-screen[style*="display: flex"] {
+        display: grid !important;
         grid-template-columns: 100px 1fr;
         grid-template-rows: 70px 1fr;
         grid-template-areas: 
@@ -198,7 +225,7 @@ input[type="file"] { display: none; }
         background: var(--surface);
     }
 
-    /* Recomendações em linha reta (Chips maiores) */
+    /* Recomendações em linha reta */
     .rec-scroll {
         flex-wrap: wrap;
         overflow-x: visible;
@@ -219,6 +246,7 @@ input[type="file"] { display: none; }
     .modal-overlay {
         backdrop-filter: blur(5px);
         background: rgba(0,0,0,0.4);
+        position: fixed; /* Garante que cobre a tela toda */
     }
 
     .modal {
@@ -235,32 +263,4 @@ input[type="file"] { display: none; }
     .modal-overlay.active .modal {
         transform: translateY(0);
     }
-
-    .modal-header {
-        border-radius: 16px 16px 0 0;
-    }
-
-    .modal-body {
-        max-height: calc(85vh - 75px);
-        overflow-y: auto;
-        border-radius: 0 0 16px 16px;
-    }
-
-    /* Tela de Login Centralizada em Cartão */
-    #auth-screen.active {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--bg);
-        height: 100vh;
-    }
-    .auth-box {
-        width: 100%;
-        max-width: 400px;
-        background: var(--surface);
-        padding: 40px;
-        border-radius: 16px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-    }
-    .auth-box h1, .auth-box p { margin-bottom: 20px; }
 }
