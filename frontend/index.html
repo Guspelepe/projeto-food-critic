@@ -4,86 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FoodCritic - MVP</title>
+    
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #FF5722;
-            --bg: #f5f5f5;
-            --surface: #ffffff;
-            --text: #333333;
-            --text-light: #757575;
-            --border: #e0e0e0;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: var(--bg); color: var(--text); display: flex; justify-content: center; }
-        #app { width: 100%; max-width: 480px; height: 100vh; background: var(--surface); position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
-        
-        /* Telas (Views) */
-        .view { display: none; flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; }
-        .view.active { display: block; }
-        #auth-screen { display: none; flex-direction: column; justify-content: center; padding: 30px; height: 100%; text-align: center; }
-        #auth-screen.active { display: flex; }
-        
-        /* Header */
-        header { background: var(--surface); padding: 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
-        header h1 { font-size: 1.5rem; color: var(--primary); }
-        .btn-logout { background: none; border: none; color: var(--text-light); font-size: 1rem; cursor: pointer; }
-        
-        /* Formulários de Auth */
-        .auth-box { background: var(--surface); padding: 20px; border-radius: 12px; }
-        .auth-box input { width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 8px; outline: none; font-size: 1rem; }
-        .btn-block { width: 100%; padding: 15px; border-radius: 8px; font-size: 1rem; font-weight: bold; border: none; cursor: pointer; margin-bottom: 10px; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
-
-        /* Feed e Cards */
-        .feed-title { font-size: 1.2rem; margin-bottom: 15px; margin-top: 10px; }
-        .card { background: var(--surface); border-radius: 15px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid var(--border); }
-        .card img { width: 100%; height: 180px; object-fit: cover; }
-        .card-content { padding: 15px; }
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-        .card-header h3 { font-size: 1.1rem; }
-        .card-price { color: var(--primary); font-weight: bold; }
-        .card-info { font-size: 0.85rem; color: var(--text-light); display: flex; gap: 15px; margin-top: 10px; }
-
-        /* Perfil / Grid */
-        .profile-header { text-align: center; margin-bottom: 20px; }
-        .avatar { width: 80px; height: 80px; border-radius: 50%; background: var(--border); margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--text-light); }
-        .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 20px; }
-        .grid-item { aspect-ratio: 1 / 1; background: var(--border); overflow: hidden; cursor: pointer; position: relative; }
-        .grid-item img { width: 100%; height: 100%; object-fit: cover; }
-
-        /* Bottom Nav */
-        nav { position: absolute; bottom: 0; width: 100%; height: 65px; background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 10; }
-        .nav-item { color: var(--text-light); font-size: 1.5rem; cursor: pointer; padding: 10px; }
-        .nav-item.active { color: var(--primary); }
-        .fab-container { position: relative; top: -20px; }
-        .fab { width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 10px rgba(255, 87, 34, 0.4); cursor: pointer; }
-
-        /* Modais */
-        .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 20; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
-        .modal-overlay.active { display: flex; opacity: 1; }
-        .modal { background: var(--surface); width: 100%; height: 100%; display: flex; flex-direction: column; overflow-y: auto; transform: translateY(100%); transition: transform 0.3s; }
-        .modal-overlay.active .modal { transform: translateY(0); }
-        .modal-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
-        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light); }
-        .modal-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 15px; }
-        
-        /* Forms */
-        .form-group { display: flex; flex-direction: column; gap: 5px; }
-        .form-group label { font-size: 0.9rem; font-weight: 600; color: var(--text-light); }
-        .form-group input, .form-group textarea, .form-group select { padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; outline: none; }
-        .upload-area { width: 100%; height: 200px; border: 2px dashed var(--border); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: var(--bg); position: relative; overflow: hidden; }
-        .upload-area i { font-size: 2rem; color: var(--text-light); margin-bottom: 10px; }
-        .upload-area img { width: 100%; height: 100%; object-fit: cover; position: absolute; }
-        input[type="file"] { display: none; }
-        .review-img { width: 100%; height: 300px; object-fit: cover; border-radius: 12px; }
-        .review-meta { display: flex; justify-content: space-between; background: var(--bg); padding: 15px; border-radius: 8px; margin: 15px 0; }
-        .review-meta div { text-align: center; }
-        .review-meta span { display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 5px; }
-        .review-meta strong { font-size: 1.1rem; color: var(--primary); }
-        .review-text { font-style: italic; color: var(--text-light); border-left: 4px solid var(--primary); padding-left: 15px; margin-top: 15px; }
-    </style>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -101,7 +24,7 @@
         </div>
     </div>
 
-    <!-- TELA PRINCIPAL DO APP (Só aparece logado) -->
+    <!-- TELA PRINCIPAL DO APP -->
     <div id="main-screen" style="display: none; height: 100%; flex-direction: column;">
         <header>
             <h1>FoodCritic</h1>
@@ -110,13 +33,42 @@
 
         <!-- VIEW 1: HOME -->
         <main id="view-home" class="view active">
+            <h2 class="feed-title">Top Restaurantes</h2>
+            <div class="rec-scroll" id="recommendations-container">
+                <p style="font-size: 12px; color: #888;">Calculando...</p>
+            </div>
+
             <h2 class="feed-title">Onde comer hoje?</h2>
             <div id="home-feed-container">
                 <p style="text-align:center; color:#888; padding: 20px;">Carregando feed...</p>
             </div>
         </main>
 
-        <!-- VIEW 2: PERFIL / DIÁRIO -->
+        <!-- VIEW 2: RESTAURANTES (NOVO COM BUSCA E FILTRO) -->
+        <main id="view-restaurants" class="view">
+            <h2 class="feed-title">Guia de Restaurantes</h2>
+            
+            <!-- Barra de Busca -->
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input type="text" id="search-rest" placeholder="Buscar restaurante..." oninput="filtrarRestaurantes()">
+            </div>
+
+            <!-- Filtros de Categoria -->
+            <div class="filter-chips" id="category-filters">
+                <button class="chip active" onclick="setFiltroCategoria('Todas', this)">Todas</button>
+                <button class="chip" onclick="setFiltroCategoria('Hamburguer', this)">Hambúrguer</button>
+                <button class="chip" onclick="setFiltroCategoria('Japonesa', this)">Japonesa</button>
+                <button class="chip" onclick="setFiltroCategoria('Italiana', this)">Italiana</button>
+                <button class="chip" onclick="setFiltroCategoria('Brasileira', this)">Brasileira</button>
+            </div>
+
+            <div id="restaurants-list-container">
+                <p style="text-align:center; color:#888; padding: 20px;">Buscando restaurantes...</p>
+            </div>
+        </main>
+
+        <!-- VIEW 3: PERFIL / DIÁRIO -->
         <main id="view-profile" class="view">
             <div class="profile-header">
                 <div class="avatar"><i class="fas fa-user"></i></div>
@@ -129,6 +81,7 @@
         <!-- BOTTOM NAV -->
         <nav>
             <div class="nav-item active" onclick="switchView('home', this)"><i class="fas fa-home"></i></div>
+            <div class="nav-item" onclick="switchView('restaurants', this)"><i class="fas fa-list-ul"></i></div>
             <div class="fab-container">
                 <div class="fab" onclick="openModal('new-review-modal')"><i class="fas fa-plus"></i></div>
             </div>
@@ -136,7 +89,7 @@
         </nav>
     </div>
 
-    <!-- MODAL: ONBOARDING (Aparece no primeiro acesso) -->
+    <!-- MODAL: ONBOARDING -->
     <div class="modal-overlay" id="onboarding-modal">
         <div class="modal" style="height: auto; border-radius: 12px; margin: 20px;">
             <div class="modal-header">
@@ -219,7 +172,7 @@
         </div>
     </div>
 
-    <!-- MODAL: DETALHES DA REVIEW -->
+    <!-- MODAL: DETALHES DA REVIEW (DIÁRIO) -->
     <div class="modal-overlay" id="details-modal">
         <div class="modal">
             <div class="modal-header">
@@ -227,6 +180,17 @@
                 <button class="close-btn" onclick="closeModal('details-modal')">&times;</button>
             </div>
             <div class="modal-body" id="details-content"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: DETALHES DO RESTAURANTE (NOVO) -->
+    <div class="modal-overlay" id="restaurant-details-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Restaurante</h2>
+                <button class="close-btn" onclick="closeModal('restaurant-details-modal')">&times;</button>
+            </div>
+            <div class="modal-body" id="restaurant-details-content"></div>
         </div>
     </div>
 </div>
