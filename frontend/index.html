@@ -17,12 +17,26 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: var(--bg); color: var(--text); display: flex; justify-content: center; }
         #app { width: 100%; max-width: 480px; height: 100vh; background: var(--surface); position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        
+        /* Telas (Views) */
         .view { display: none; flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; }
         .view.active { display: block; }
-        header { background: var(--surface); padding: 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+        #auth-screen { display: none; flex-direction: column; justify-content: center; padding: 30px; height: 100%; text-align: center; }
+        #auth-screen.active { display: flex; }
+        
+        /* Header */
+        header { background: var(--surface); padding: 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
         header h1 { font-size: 1.5rem; color: var(--primary); }
-        .search-bar { margin-top: 15px; display: flex; background: var(--bg); border-radius: 25px; padding: 10px 15px; align-items: center; }
-        .search-bar input { border: none; background: transparent; flex: 1; margin-left: 10px; outline: none; font-size: 1rem; }
+        .btn-logout { background: none; border: none; color: var(--text-light); font-size: 1rem; cursor: pointer; }
+        
+        /* Formulários de Auth */
+        .auth-box { background: var(--surface); padding: 20px; border-radius: 12px; }
+        .auth-box input { width: 100%; padding: 15px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 8px; outline: none; font-size: 1rem; }
+        .btn-block { width: 100%; padding: 15px; border-radius: 8px; font-size: 1rem; font-weight: bold; border: none; cursor: pointer; margin-bottom: 10px; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+
+        /* Feed e Cards */
         .feed-title { font-size: 1.2rem; margin-bottom: 15px; margin-top: 10px; }
         .card { background: var(--surface); border-radius: 15px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid var(--border); }
         .card img { width: 100%; height: 180px; object-fit: cover; }
@@ -31,67 +45,128 @@
         .card-header h3 { font-size: 1.1rem; }
         .card-price { color: var(--primary); font-weight: bold; }
         .card-info { font-size: 0.85rem; color: var(--text-light); display: flex; gap: 15px; margin-top: 10px; }
+
+        /* Perfil / Grid */
         .profile-header { text-align: center; margin-bottom: 20px; }
         .avatar { width: 80px; height: 80px; border-radius: 50%; background: var(--border); margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--text-light); }
-        .user-tags { display: flex; justify-content: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-        .tag { background: #FFF3E0; color: var(--primary); padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; }
         .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 20px; }
         .grid-item { aspect-ratio: 1 / 1; background: var(--border); overflow: hidden; cursor: pointer; position: relative; }
         .grid-item img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Bottom Nav */
         nav { position: absolute; bottom: 0; width: 100%; height: 65px; background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 10; }
         .nav-item { color: var(--text-light); font-size: 1.5rem; cursor: pointer; padding: 10px; }
         .nav-item.active { color: var(--primary); }
         .fab-container { position: relative; top: -20px; }
-        .fab { width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 10px rgba(255, 87, 34, 0.4); cursor: pointer; transition: transform 0.2s; }
+        .fab { width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 10px rgba(255, 87, 34, 0.4); cursor: pointer; }
+
+        /* Modais */
         .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 20; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
         .modal-overlay.active { display: flex; opacity: 1; }
-        .modal { background: var(--surface); width: 100%; height: 100%; max-height: 100%; display: flex; flex-direction: column; overflow-y: auto; transform: translateY(100%); transition: transform 0.3s; }
-        /* 🛠️ CORREÇÃO DO BUG DA TELA CINZA AQUI: */
+        .modal { background: var(--surface); width: 100%; height: 100%; display: flex; flex-direction: column; overflow-y: auto; transform: translateY(100%); transition: transform 0.3s; }
         .modal-overlay.active .modal { transform: translateY(0); }
-        .modal-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 2; }
+        .modal-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
         .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light); }
         .modal-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Forms */
         .form-group { display: flex; flex-direction: column; gap: 5px; }
         .form-group label { font-size: 0.9rem; font-weight: 600; color: var(--text-light); }
         .form-group input, .form-group textarea, .form-group select { padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; outline: none; }
-        .btn-primary { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: auto; }
-        .upload-area { width: 100%; height: 200px; border: 2px dashed var(--border); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: var(--bg); overflow: hidden; position: relative; }
+        .upload-area { width: 100%; height: 200px; border: 2px dashed var(--border); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: var(--bg); position: relative; overflow: hidden; }
         .upload-area i { font-size: 2rem; color: var(--text-light); margin-bottom: 10px; }
-        .upload-area img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+        .upload-area img { width: 100%; height: 100%; object-fit: cover; position: absolute; }
         input[type="file"] { display: none; }
+        .review-img { width: 100%; height: 300px; object-fit: cover; border-radius: 12px; }
+        .review-meta { display: flex; justify-content: space-between; background: var(--bg); padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .review-meta div { text-align: center; }
+        .review-meta span { display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 5px; }
+        .review-meta strong { font-size: 1.1rem; color: var(--primary); }
+        .review-text { font-style: italic; color: var(--text-light); border-left: 4px solid var(--primary); padding-left: 15px; margin-top: 15px; }
     </style>
 </head>
 <body>
 
 <div id="app">
-    <header>
-        <h1>FoodCritic</h1>
-    </header>
-
-    <main id="view-home" class="view active">
-        <h2 class="feed-title">Sugestões para você</h2>
-        <div id="home-feed-container">
-            <p style="text-align:center; color:#888; padding: 20px;">Carregando feed...</p>
+    <!-- TELA DE LOGIN / CADASTRO -->
+    <div id="auth-screen">
+        <h1 style="color: var(--primary); font-size: 2rem; margin-bottom: 10px;">🍔 FoodCritic</h1>
+        <p style="color: var(--text-light); margin-bottom: 30px;">O seu diário gastronômico definitivo.</p>
+        
+        <div class="auth-box">
+            <input type="email" id="auth-email" placeholder="Seu e-mail">
+            <input type="password" id="auth-password" placeholder="Sua senha">
+            <button class="btn-block btn-primary" onclick="fazerLogin()">Entrar</button>
+            <button class="btn-block btn-secondary" onclick="fazerCadastro()">Criar Conta</button>
         </div>
-    </main>
+    </div>
 
-    <main id="view-profile" class="view">
-        <div class="profile-header">
-            <div class="avatar"><i class="fas fa-user"></i></div>
-            <h2>Seu Diário Gastronômico</h2>
-            <div class="user-tags" id="user-tags"></div>
+    <!-- TELA PRINCIPAL DO APP (Só aparece logado) -->
+    <div id="main-screen" style="display: none; height: 100%; flex-direction: column;">
+        <header>
+            <h1>FoodCritic</h1>
+            <button class="btn-logout" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+        </header>
+
+        <!-- VIEW 1: HOME -->
+        <main id="view-home" class="view active">
+            <h2 class="feed-title">Onde comer hoje?</h2>
+            <div id="home-feed-container">
+                <p style="text-align:center; color:#888; padding: 20px;">Carregando feed...</p>
+            </div>
+        </main>
+
+        <!-- VIEW 2: PERFIL / DIÁRIO -->
+        <main id="view-profile" class="view">
+            <div class="profile-header">
+                <div class="avatar"><i class="fas fa-user"></i></div>
+                <h2>Meu Diário</h2>
+                <p id="profile-email" style="color: var(--text-light); font-size: 0.9rem;"></p>
+            </div>
+            <div class="grid-container" id="diary-grid"></div>
+        </main>
+
+        <!-- BOTTOM NAV -->
+        <nav>
+            <div class="nav-item active" onclick="switchView('home', this)"><i class="fas fa-home"></i></div>
+            <div class="fab-container">
+                <div class="fab" onclick="openModal('new-review-modal')"><i class="fas fa-plus"></i></div>
+            </div>
+            <div class="nav-item" onclick="switchView('profile', this)"><i class="fas fa-user"></i></div>
+        </nav>
+    </div>
+
+    <!-- MODAL: ONBOARDING (Aparece no primeiro acesso) -->
+    <div class="modal-overlay" id="onboarding-modal">
+        <div class="modal" style="height: auto; border-radius: 12px; margin: 20px;">
+            <div class="modal-header">
+                <h2>Bem-vindo ao FoodCritic!</h2>
+            </div>
+            <div class="modal-body">
+                <p>Para personalizar suas recomendações, nos conte um pouco sobre você:</p>
+                <div class="form-group" style="margin-top: 10px;">
+                    <label>Faixa de gasto por refeição:</label>
+                    <select id="onboarding-budget">
+                        <option value="Econômico">Até R$ 30 (Econômico)</option>
+                        <option value="Moderado">R$ 30 a R$ 80 (Moderado)</option>
+                        <option value="Gourmet">Acima de R$ 80 (Gourmet)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Restrição alimentar:</label>
+                    <select id="onboarding-restriction">
+                        <option value="Nenhuma">Nenhuma</option>
+                        <option value="Vegetariano">Vegetariano</option>
+                        <option value="Vegano">Vegano</option>
+                        <option value="Sem Glúten">Sem Glúten</option>
+                    </select>
+                </div>
+                <button class="btn-primary btn-block" style="margin-top: 15px;" onclick="salvarOnboarding()">Começar a comer!</button>
+            </div>
         </div>
-        <div class="grid-container" id="diary-grid"></div>
-    </main>
+    </div>
 
-    <nav>
-        <div class="nav-item active" onclick="switchView('home', this)"><i class="fas fa-home"></i></div>
-        <div class="fab-container">
-            <div class="fab" onclick="openModal('new-review-modal')"><i class="fas fa-plus"></i></div>
-        </div>
-        <div class="nav-item" onclick="switchView('profile', this)"><i class="fas fa-user"></i></div>
-    </nav>
-
+    <!-- MODAL: NOVA REVIEW -->
     <div class="modal-overlay" id="new-review-modal">
         <div class="modal">
             <div class="modal-header">
@@ -100,7 +175,7 @@
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label>1. Tire uma foto do prato</label>
+                    <label>1. Foto do prato</label>
                     <label for="photo-upload" class="upload-area" id="photo-preview-area">
                         <i class="fas fa-camera"></i>
                         <span>Toque para tirar foto</span>
@@ -139,8 +214,19 @@
                     <label>3. Resenha rápida</label>
                     <textarea id="review-text" rows="2" placeholder="O que achou?"></textarea>
                 </div>
-                <button class="btn-primary" onclick="saveReview()">Salvar no Diário</button>
+                <button class="btn-primary btn-block" style="margin-top: auto;" onclick="saveReview()">Salvar no Diário</button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL: DETALHES DA REVIEW -->
+    <div class="modal-overlay" id="details-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Detalhes</h2>
+                <button class="close-btn" onclick="closeModal('details-modal')">&times;</button>
+            </div>
+            <div class="modal-body" id="details-content"></div>
         </div>
     </div>
 </div>
