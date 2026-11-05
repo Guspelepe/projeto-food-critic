@@ -3,118 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FoodCritic - MVP</title>
-    
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>FoodCritic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="app-body">
 
-<div id="app">
-    <!-- TELA DE LOGIN / CADASTRO -->
-    <div id="auth-screen">
-        <h1 style="color: var(--primary); font-size: 2rem; margin-bottom: 10px;">🍔 FoodCritic</h1>
-        <p style="color: var(--text-light); margin-bottom: 30px;">O seu diário gastronômico definitivo.</p>
-        
-        <div class="auth-box">
-            <input type="email" id="auth-email" placeholder="Seu e-mail">
-            <input type="password" id="auth-password" placeholder="Sua senha">
-            <button class="btn-block btn-primary" onclick="fazerLogin()">Entrar</button>
-            <button class="btn-block btn-secondary" onclick="fazerCadastro()">Criar Conta</button>
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- TOP NAVBAR (Desktop) -->
+    <header class="top-nav">
+        <div class="nav-container">
+            <h1 class="logo">FoodCritic</h1>
+            <div class="nav-links">
+                <button class="nav-btn active" onclick="switchView('home', this)">Início</button>
+                <button class="nav-btn" onclick="switchView('restaurants', this)">Explorar</button>
+                <button class="nav-btn" onclick="switchView('profile', this)">Meu Diário</button>
+            </div>
+            <div class="nav-actions">
+                <i class="fas fa-search text-light" style="margin-right: 15px; cursor: pointer;"></i>
+                <button class="btn-logout" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
         </div>
-    </div>
+    </header>
 
-    <!-- TELA PRINCIPAL DO APP -->
-    <div id="main-screen" style="display: none; height: 100%; flex-direction: column;">
-        <header>
-            <h1>FoodCritic</h1>
-            <button class="btn-logout" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-        </header>
-
-        <!-- VIEW 1: HOME -->
-        <main id="view-home" class="view active">
-            <h2 class="feed-title">Top Restaurantes</h2>
-            <div class="rec-scroll" id="recommendations-container">
-                <p style="font-size: 12px; color: #888;">Calculando...</p>
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="main-content">
+        
+        <!-- VIEW 1: HOME (FEED) -->
+        <section id="view-home" class="view active">
+            <div class="feed-header text-center">
+                <h2 id="greeting-text">Onde comer hoje?</h2>
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-rest" placeholder="Busque por restaurantes, pratos ou culinárias...">
+                </div>
             </div>
 
-            <h2 class="feed-title">Onde comer hoje?</h2>
-            <div id="home-feed-container">
-                <p style="text-align:center; color:#888; padding: 20px;">Carregando feed...</p>
+            <!-- TOP RESTAURANTES (STORIES) -->
+            <div class="stories-container" id="recommendations-container">
+                <!-- Preenchido via JS -->
             </div>
-        </main>
 
-        <!-- VIEW 2: RESTAURANTES (NOVO COM BUSCA E FILTRO) -->
-        <main id="view-restaurants" class="view">
-            <h2 class="feed-title">Guia de Restaurantes</h2>
+            <div class="feed-title-container">
+                <h3 class="section-title">Perto de você</h3>
+            </div>
+
+            <!-- FEED SINGLE COLUMN (Estilo Instagram) -->
+            <div id="home-feed-container" class="feed-single-column">
+                <!-- Preenchido via JS -->
+            </div>
+        </section>
+
+        <!-- VIEW 2: RESTAURANTES -->
+        <section id="view-restaurants" class="view">
+            <div class="view-header">
+                <h2 class="section-title">Guia de Restaurantes</h2>
+                <p class="text-light">Restaurantes reais. Pratos provados. Pessoas como você.</p>
+            </div>
             
-            <!-- Barra de Busca -->
-            <div class="search-container">
-                <i class="fas fa-search"></i>
-                <input type="text" id="search-rest" placeholder="Buscar restaurante..." oninput="filtrarRestaurantes()">
-            </div>
-
-            <!-- Filtros de Categoria -->
             <div class="filter-chips" id="category-filters">
                 <button class="chip active" onclick="setFiltroCategoria('Todas', this)">Todas</button>
                 <button class="chip" onclick="setFiltroCategoria('Hamburguer', this)">Hambúrguer</button>
                 <button class="chip" onclick="setFiltroCategoria('Japonesa', this)">Japonesa</button>
                 <button class="chip" onclick="setFiltroCategoria('Italiana', this)">Italiana</button>
                 <button class="chip" onclick="setFiltroCategoria('Brasileira', this)">Brasileira</button>
+                <button class="chip" onclick="setFiltroCategoria('Vegetariano', this)">🌱 Vegetariano</button>
+                <button class="chip" onclick="setFiltroCategoria('Vegano', this)">🌿 Vegano</button>
             </div>
 
-            <div id="restaurants-list-container">
-                <p style="text-align:center; color:#888; padding: 20px;">Buscando restaurantes...</p>
+            <div id="restaurants-list-container" class="restaurants-grid">
+                <!-- Preenchido via JS -->
             </div>
-        </main>
+        </section>
 
-        <!-- VIEW 3: PERFIL / DIÁRIO -->
-        <main id="view-profile" class="view">
+        <!-- VIEW 3: PERFIL (DIÁRIO) -->
+        <section id="view-profile" class="view">
             <div class="profile-header">
                 <div class="avatar"><i class="fas fa-user"></i></div>
                 <h2>Meu Diário</h2>
-                <p id="profile-email" style="color: var(--text-light); font-size: 0.9rem;"></p>
-            </div>
-            <div class="grid-container" id="diary-grid"></div>
-        </main>
-
-        <!-- BOTTOM NAV -->
-        <nav>
-            <div class="nav-item active" onclick="switchView('home', this)"><i class="fas fa-home"></i></div>
-            <div class="nav-item" onclick="switchView('restaurants', this)"><i class="fas fa-list-ul"></i></div>
-            <div class="fab-container">
-                <div class="fab" onclick="openModal('new-review-modal')"><i class="fas fa-plus"></i></div>
-            </div>
-            <div class="nav-item" onclick="switchView('profile', this)"><i class="fas fa-user"></i></div>
-        </nav>
-    </div>
-
-    <!-- MODAL: ONBOARDING -->
-    <div class="modal-overlay" id="onboarding-modal">
-        <div class="modal" style="height: auto; border-radius: 12px; margin: 20px;">
-            <div class="modal-header">
-                <h2>Bem-vindo ao FoodCritic!</h2>
-            </div>
-            <div class="modal-body">
-                <p>Para personalizar suas recomendações, nos conte um pouco sobre você:</p>
-                <div class="form-group" style="margin-top: 10px;">
-                    <label>Faixa de gasto por refeição:</label>
-                    <select id="onboarding-budget">
-                        <option value="Econômico">Até R$ 30 (Econômico)</option>
-                        <option value="Moderado">R$ 30 a R$ 80 (Moderado)</option>
-                        <option value="Gourmet">Acima de R$ 80 (Gourmet)</option>
-                    </select>
+                <p id="profile-email" class="text-light"></p>
+                <div class="profile-stats">
+                    <div><strong id="stat-reviews">0</strong><span>Avaliações</span></div>
+                    <div><strong id="stat-restaurants">0</strong><span>Restaurantes</span></div>
                 </div>
-                <div class="form-group">
-                    <label>Restrição alimentar:</label>
-                    <select id="onboarding-restriction">
-                        <option value="Nenhuma">Nenhuma</option>
-                        <option value="Vegetariano">Vegetariano</option>
-                        <option value="Vegano">Vegano</option>
-                        <option value="Sem Glúten">Sem Glúten</option>
-                    </select>
+            </div>
+            
+            <div class="grid-container" id="diary-grid">
+                <!-- Preenchido via JS -->
+            </div>
+        </section>
+    </main>
+
+    <button class="fab-desktop" onclick="openNewReviewModal()"><i class="fas fa-plus"></i> Registrar refeição</button>
+
+    <!-- BOTTOM NAV (Mobile) -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" onclick="switchView('home', this)"><i class="fas fa-home"></i><span>Início</span></button>
+        <button class="nav-btn" onclick="switchView('restaurants', this)"><i class="fas fa-list-ul"></i><span>Explorar</span></button>
+        <button class="nav-btn" onclick="switchView('profile', this)"><i class="fas fa-user"></i><span>Diário</span></button>
+        <button class="fab-mobile" onclick="openNewReviewModal()"><i class="fas fa-plus"></i></button>
+    </nav>
+
+    <!-- MODAL: RESTAURANTE (NOVO DESIGN) -->
+    <div class="modal-overlay" id="restaurant-details-modal">
+        <div class="modal modal-large">
+            <!-- Botão de fechar flutuante -->
+            <button class="close-btn-absolute" onclick="closeModal('restaurant-details-modal')"><i class="fas fa-times"></i></button>
+            
+            <!-- Capa do Restaurante -->
+            <div class="modal-cover" id="rest-modal-cover">
+                <img src="" id="rest-modal-img" alt="Capa">
+            </div>
+
+            <div class="modal-body" style="padding-top: 0;">
+                <!-- Header com Nome e Stats -->
+                <div class="rest-modal-header">
+                    <h2 id="rest-modal-name">Restaurante</h2>
+                    <div class="rest-modal-stats">
+                        <span id="rest-modal-rating">⭐ 5.0</span> · 
+                        <span id="rest-modal-category">Categoria</span> · 
+                        <span id="rest-modal-reviews">Provado por 0 pessoas</span>
+                    </div>
                 </div>
-                <button class="btn-primary btn-block" style="margin-top: 15px;" onclick="salvarOnboarding()">Começar a comer!</button>
+
+                <h3 class="section-title" style="margin-top: 20px;">Pratos provados</h3>
+                
+                <!-- Lista de Pratos -->
+                <div id="rest-modal-dishes" class="dishes-list">
+                    <!-- Preenchido via JS -->
+                </div>
+
+                <!-- CTA Fixo -->
+                <div class="modal-cta">
+                    <button class="btn-primary btn-block" onclick="openNewReviewForRestaurant()">+ Registrar refeição aqui</button>
+                </div>
             </div>
         </div>
     </div>
@@ -123,26 +147,49 @@
     <div class="modal-overlay" id="new-review-modal">
         <div class="modal">
             <div class="modal-header">
-                <h2>Nova Review</h2>
+                <h2>Registrar Refeição</h2>
                 <button class="close-btn" onclick="closeModal('new-review-modal')">&times;</button>
             </div>
+            
             <div class="modal-body">
-                <div class="form-group">
-                    <label>1. Foto do prato</label>
+                <!-- Passo 1: Foto -->
+                <div class="form-step active" id="step-1">
                     <label for="photo-upload" class="upload-area" id="photo-preview-area">
                         <i class="fas fa-camera"></i>
-                        <span>Toque para tirar foto</span>
+                        <span>Adicionar foto</span>
                     </label>
-                    <input type="file" id="photo-upload" accept="image/*" onchange="previewImage(event)">
+                    <input type="file" id="photo-upload" accept="image/*" capture="environment" onchange="previewImage(event)">
+                    <button class="btn-primary btn-block mt-2" onclick="nextStep(2)" id="btn-next-1" disabled>Próximo</button>
                 </div>
-                <div class="form-group">
-                    <label>2. Qual foi o prato?</label>
-                    <input type="text" id="review-dish" placeholder="Ex: Hambúrguer Clássico">
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <div class="form-group" style="flex: 1;">
+
+                <!-- Passo 2: Dados -->
+                <div class="form-step" id="step-2">
+                    <div class="form-group">
+                        <label>Qual foi o prato?</label>
+                        <input type="text" id="review-dish" placeholder="Ex: Hambúrguer Clássico">
+                    </div>
+                    <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                        <label style="font-size: 0.9rem; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="dish-vegetarian" style="width: auto; padding: 0;"> 🌱 Vegetariano
+                        </label>
+                        <label style="font-size: 0.9rem; display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                            <input type="checkbox" id="dish-vegan" style="width: auto; padding: 0;"> 🌿 Vegano
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Onde?</label>
+                        <select id="review-location" onchange="toggleNovoRestaurante(this)">
+                            <option value="" disabled selected>Selecione o restaurante...</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="new-rest-container" style="display: none;">
+                        <label>Nome do novo restaurante</label>
+                        <input type="text" id="new-rest-name" placeholder="Ex: Burger King">
+                    </div>
+                    <div class="form-group">
                         <label>Categoria</label>
                         <select id="review-category">
+                            <option value="" disabled selected>Selecione...</option>
                             <option value="Hamburguer">Hambúrguer</option>
                             <option value="Japonesa">Japonesa</option>
                             <option value="Italiana">Italiana</option>
@@ -150,52 +197,37 @@
                             <option value="Outra">Outra</option>
                         </select>
                     </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>Nota (1 a 5)</label>
-                        <input type="number" id="review-rating" min="1" max="5" value="5">
+                    <div class="form-group">
+                        <label>Quanto pagou? (R$)</label>
+                        <input type="text" id="review-price" placeholder="0,00" oninput="applyCurrencyMask(this)">
+                    </div>
+                    <div class="flex-btns">
+                        <button class="btn-secondary" onclick="nextStep(1)">Voltar</button>
+                        <button class="btn-primary" onclick="nextStep(3)">Próximo</button>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Onde você comeu?</label>
-                    <input type="text" id="review-location" placeholder="Restaurante ou local">
+
+                <!-- Passo 3: Resenha -->
+                <div class="form-step" id="step-3">
+                    <div class="form-group text-center">
+                        <label>Nota</label>
+                        <input type="number" id="review-rating" min="1" max="5" value="5" class="rating-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Sua opinião (até 280 caracteres)</label>
+                        <textarea id="review-text" rows="4" maxlength="280" placeholder="O que achou?"></textarea>
+                    </div>
+                    <div class="flex-btns">
+                        <button class="btn-secondary" onclick="nextStep(2)">Voltar</button>
+                        <button class="btn-primary" onclick="saveReview()">Salvar no Diário</button>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Quanto pagou? (R$)</label>
-                    <input type="text" id="review-price" placeholder="0,00" oninput="applyCurrencyMask(this)">
-                </div>
-                <div class="form-group">
-                    <label>3. Resenha rápida</label>
-                    <textarea id="review-text" rows="2" placeholder="O que achou?"></textarea>
-                </div>
-                <button class="btn-primary btn-block" style="margin-top: auto;" onclick="saveReview()">Salvar no Diário</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL: DETALHES DA REVIEW (DIÁRIO) -->
-    <div class="modal-overlay" id="details-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Detalhes</h2>
-                <button class="close-btn" onclick="closeModal('details-modal')">&times;</button>
-            </div>
-            <div class="modal-body" id="details-content"></div>
-        </div>
-    </div>
-
-    <!-- MODAL: DETALHES DO RESTAURANTE (NOVO) -->
-    <div class="modal-overlay" id="restaurant-details-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <h2>Restaurante</h2>
-                <button class="close-btn" onclick="closeModal('restaurant-details-modal')">&times;</button>
-            </div>
-            <div class="modal-body" id="restaurant-details-content"></div>
-        </div>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

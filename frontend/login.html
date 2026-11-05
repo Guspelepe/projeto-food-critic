@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar - FoodCritic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="auth-body">
+
+    <div class="auth-wrapper">
+        <div class="auth-header">
+            <h1>🍔 FoodCritic</h1>
+            <p>O seu diário gastronômico definitivo.</p>
+        </div>
+        
+        <div class="auth-box">
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="auth-email" placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="auth-password" placeholder="Sua senha secreta">
+            </div>
+            
+            <button class="btn-primary btn-block" id="btn-login" onclick="fazerLogin()">Entrar</button>
+            <button class="btn-secondary btn-block" id="btn-signup" onclick="fazerCadastro()">Criar Conta</button>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>
