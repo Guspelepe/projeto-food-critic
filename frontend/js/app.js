@@ -49,7 +49,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
 
 // --- 2. ONBOARDING ---
 async function checarOnboarding() {
-    const { data } = await supabaseClient.from('profiles').select('food_preferences').eq('id', currentUser.id).single();
+    const { data } = await supabaseClient.from('profiles').select('food_preferences').eq('id', currentUser.id).maybeSingle();
     if (!data || !data.food_preferences || data.food_preferences.length === 0) openModal('onboarding-modal');
 }
 
