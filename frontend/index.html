@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Critic - O Guia Gastronômico</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- TELA DE LOGIN -->
+    <div id="auth-screen" class="screen active">
+        <div class="auth-box">
+            <h1>🍔 Food Critic</h1>
+            <p>O seu diário gastronômico definitivo.</p>
+            
+            <input type="email" id="email" placeholder="E-mail">
+            <input type="password" id="password" placeholder="Senha">
+            
+            <button class="btn-primary" onclick="login()">Entrar</button>
+            <button class="btn-secondary" onclick="signup()">Criar Conta</button>
+        </div>
+    </div>
+
+    <!-- TELA PRINCIPAL DO APP -->
+    <div id="app-screen" class="screen">
+        <!-- Header -->
+        <header>
+            <div class="logo">🍔 Food Critic</div>
+            <div class="user-nav">
+                <span id="user-name">Usuário</span>
+                <button class="btn-logout" onclick="logout()">Sair</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Seção de Recomendações (Motor SQL) -->
+            <section class="recommendations-section">
+                <h2>🔥 Recomendados para Você</h2>
+                <div id="recommendations-list" class="grid-container"></div>
+            </section>
+
+            <!-- Botão de Nova Avaliação -->
+            <div class="action-bar">
+                <h2>Últimas Avaliações</h2>
+                <button class="btn-primary" onclick="openModal()">+ Nova Crítica</button>
+            </div>
+
+            <!-- Feed de Avaliações -->
+            <section id="feed" class="feed-container">
+                <!-- Os cards de review serão inseridos aqui via JS -->
+                <p class="loading">Carregando feed...</p>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAL DE NOVA AVALIAÇÃO -->
+    <div id="review-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Fazer uma Crítica</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            
+            <form id="review-form" onsubmit="submitReview(event)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Restaurante</label>
+                        <input type="text" id="rest-name" required placeholder="Nome do local">
+                    </div>
+                    <div class="form-group">
+                        <label>Categoria</label>
+                        <select id="rest-category">
+                            <option value="Hamburguer">Hambúrguer</option>
+                            <option value="Japonesa">Japonesa</option>
+                            <option value="Italiana">Italiana</option>
+                            <option value="Brasileira">Brasileira</option>
+                            <option value="Outra">Outra</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>O que você pediu do cardápio?</label>
+                    <input type="text" id="dish-name" required placeholder="Ex: X-Burger Especial">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Quanto pagou? (R$)</label>
+                        <input type="number" id="price-paid" step="0.01" required placeholder="Ex: 35.50">
+                    </div>
+                    <div class="form-group">
+                        <label>Nota (1 a 5)</label>
+                        <input type="number" id="rating" min="1" max="5" required placeholder="5">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Sua resenha</label>
+                    <textarea id="review-text" rows="3" required placeholder="O que achou da comida?"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Foto da Comida</label>
+                        <input type="file" id="food-photo" accept="image/*" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Foto do Cardápio (Opcional)</label>
+                        <input type="file" id="menu-photo" accept="image/*">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary btn-block" id="submit-btn">Publicar Crítica</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
