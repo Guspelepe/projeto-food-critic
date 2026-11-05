@@ -3,73 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Food Critic - O Guia Gastronômico</title>
-    <link rel="stylesheet" href="css/style.css">
+    <title>FoodCritic - MVP</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF5722;
+            --bg: #f5f5f5;
+            --surface: #ffffff;
+            --text: #333333;
+            --text-light: #757575;
+            --border: #e0e0e0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); display: flex; justify-content: center; }
+        #app { width: 100%; max-width: 480px; height: 100vh; background: var(--surface); position: relative; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 0 20px rgba(0,0,0,0.1); }
+        .view { display: none; flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 80px; }
+        .view.active { display: block; }
+        header { background: var(--surface); padding: 20px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+        header h1 { font-size: 1.5rem; color: var(--primary); }
+        .search-bar { margin-top: 15px; display: flex; background: var(--bg); border-radius: 25px; padding: 10px 15px; align-items: center; }
+        .search-bar input { border: none; background: transparent; flex: 1; margin-left: 10px; outline: none; font-size: 1rem; }
+        .feed-title { font-size: 1.2rem; margin-bottom: 15px; margin-top: 10px; }
+        .card { background: var(--surface); border-radius: 15px; overflow: hidden; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid var(--border); }
+        .card img { width: 100%; height: 180px; object-fit: cover; }
+        .card-content { padding: 15px; }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .card-header h3 { font-size: 1.1rem; }
+        .card-price { color: var(--primary); font-weight: bold; }
+        .card-info { font-size: 0.85rem; color: var(--text-light); display: flex; gap: 15px; margin-top: 10px; }
+        .profile-header { text-align: center; margin-bottom: 20px; }
+        .avatar { width: 80px; height: 80px; border-radius: 50%; background: var(--border); margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--text-light); }
+        .user-tags { display: flex; justify-content: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .tag { background: #FFF3E0; color: var(--primary); padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; }
+        .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin-top: 20px; }
+        .grid-item { aspect-ratio: 1 / 1; background: var(--border); overflow: hidden; cursor: pointer; position: relative; }
+        .grid-item img { width: 100%; height: 100%; object-fit: cover; }
+        nav { position: absolute; bottom: 0; width: 100%; height: 65px; background: var(--surface); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; z-index: 10; }
+        .nav-item { color: var(--text-light); font-size: 1.5rem; cursor: pointer; padding: 10px; }
+        .nav-item.active { color: var(--primary); }
+        .fab-container { position: relative; top: -20px; }
+        .fab { width: 60px; height: 60px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 10px rgba(255, 87, 34, 0.4); cursor: pointer; transition: transform 0.2s; }
+        .modal-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 20; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal { background: var(--surface); width: 100%; height: 100%; max-height: 100%; display: flex; flex-direction: column; overflow-y: auto; transform: translateY(100%); transition: transform 0.3s; }
+        /* 🛠️ CORREÇÃO DO BUG DA TELA CINZA AQUI: */
+        .modal-overlay.active .modal { transform: translateY(0); }
+        .modal-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 2; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light); }
+        .modal-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 0.9rem; font-weight: 600; color: var(--text-light); }
+        .form-group input, .form-group textarea, .form-group select { padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; outline: none; }
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: auto; }
+        .upload-area { width: 100%; height: 200px; border: 2px dashed var(--border); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: var(--bg); overflow: hidden; position: relative; }
+        .upload-area i { font-size: 2rem; color: var(--text-light); margin-bottom: 10px; }
+        .upload-area img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
+        input[type="file"] { display: none; }
+    </style>
 </head>
 <body>
-    <!-- TELA DE LOGIN -->
-    <div id="auth-screen" class="screen active">
-        <div class="auth-box">
-            <h1>🍔 Food Critic</h1>
-            <p>O seu diário gastronômico definitivo.</p>
-            
-            <input type="email" id="email" placeholder="E-mail">
-            <input type="password" id="password" placeholder="Senha">
-            
-            <button class="btn-primary" onclick="login()">Entrar</button>
-            <button class="btn-secondary" onclick="signup()">Criar Conta</button>
+
+<div id="app">
+    <header>
+        <h1>FoodCritic</h1>
+    </header>
+
+    <main id="view-home" class="view active">
+        <h2 class="feed-title">Sugestões para você</h2>
+        <div id="home-feed-container">
+            <p style="text-align:center; color:#888; padding: 20px;">Carregando feed...</p>
         </div>
-    </div>
+    </main>
 
-    <!-- TELA PRINCIPAL DO APP -->
-    <div id="app-screen" class="screen">
-        <!-- Header -->
-        <header>
-            <div class="logo">🍔 Food Critic</div>
-            <div class="user-nav">
-                <span id="user-name">Usuário</span>
-                <button class="btn-logout" onclick="logout()">Sair</button>
-            </div>
-        </header>
+    <main id="view-profile" class="view">
+        <div class="profile-header">
+            <div class="avatar"><i class="fas fa-user"></i></div>
+            <h2>Seu Diário Gastronômico</h2>
+            <div class="user-tags" id="user-tags"></div>
+        </div>
+        <div class="grid-container" id="diary-grid"></div>
+    </main>
 
-        <main>
-            <!-- Seção de Recomendações (Motor SQL) -->
-            <section class="recommendations-section">
-                <h2>🔥 Recomendados para Você</h2>
-                <div id="recommendations-list" class="grid-container"></div>
-            </section>
+    <nav>
+        <div class="nav-item active" onclick="switchView('home', this)"><i class="fas fa-home"></i></div>
+        <div class="fab-container">
+            <div class="fab" onclick="openModal('new-review-modal')"><i class="fas fa-plus"></i></div>
+        </div>
+        <div class="nav-item" onclick="switchView('profile', this)"><i class="fas fa-user"></i></div>
+    </nav>
 
-            <!-- Botão de Nova Avaliação -->
-            <div class="action-bar">
-                <h2>Últimas Avaliações</h2>
-                <button class="btn-primary" onclick="openModal()">+ Nova Crítica</button>
-            </div>
-
-            <!-- Feed de Avaliações -->
-            <section id="feed" class="feed-container">
-                <!-- Os cards de review serão inseridos aqui via JS -->
-                <p class="loading">Carregando feed...</p>
-            </section>
-        </main>
-    </div>
-
-    <!-- MODAL DE NOVA AVALIAÇÃO -->
-    <div id="review-modal" class="modal">
-        <div class="modal-content">
+    <div class="modal-overlay" id="new-review-modal">
+        <div class="modal">
             <div class="modal-header">
-                <h2>Fazer uma Crítica</h2>
-                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>Nova Review</h2>
+                <button class="close-btn" onclick="closeModal('new-review-modal')">&times;</button>
             </div>
-            
-            <form id="review-form" onsubmit="submitReview(event)">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Restaurante</label>
-                        <input type="text" id="rest-name" required placeholder="Nome do local">
-                    </div>
-                    <div class="form-group">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>1. Tire uma foto do prato</label>
+                    <label for="photo-upload" class="upload-area" id="photo-preview-area">
+                        <i class="fas fa-camera"></i>
+                        <span>Toque para tirar foto</span>
+                    </label>
+                    <input type="file" id="photo-upload" accept="image/*" onchange="previewImage(event)">
+                </div>
+                <div class="form-group">
+                    <label>2. Qual foi o prato?</label>
+                    <input type="text" id="review-dish" placeholder="Ex: Hambúrguer Clássico">
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1;">
                         <label>Categoria</label>
-                        <select id="rest-category">
+                        <select id="review-category">
                             <option value="Hamburguer">Hambúrguer</option>
                             <option value="Japonesa">Japonesa</option>
                             <option value="Italiana">Italiana</option>
@@ -77,47 +122,30 @@
                             <option value="Outra">Outra</option>
                         </select>
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label>O que você pediu do cardápio?</label>
-                    <input type="text" id="dish-name" required placeholder="Ex: X-Burger Especial">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Quanto pagou? (R$)</label>
-                        <input type="number" id="price-paid" step="0.01" required placeholder="Ex: 35.50">
-                    </div>
-                    <div class="form-group">
+                    <div class="form-group" style="flex: 1;">
                         <label>Nota (1 a 5)</label>
-                        <input type="number" id="rating" min="1" max="5" required placeholder="5">
+                        <input type="number" id="review-rating" min="1" max="5" value="5">
                     </div>
                 </div>
-
                 <div class="form-group">
-                    <label>Sua resenha</label>
-                    <textarea id="review-text" rows="3" required placeholder="O que achou da comida?"></textarea>
+                    <label>Onde você comeu?</label>
+                    <input type="text" id="review-location" placeholder="Restaurante ou local">
                 </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Foto da Comida</label>
-                        <input type="file" id="food-photo" accept="image/*" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Foto do Cardápio (Opcional)</label>
-                        <input type="file" id="menu-photo" accept="image/*">
-                    </div>
+                <div class="form-group">
+                    <label>Quanto pagou? (R$)</label>
+                    <input type="text" id="review-price" placeholder="0,00" oninput="applyCurrencyMask(this)">
                 </div>
-
-                <button type="submit" class="btn-primary btn-block" id="submit-btn">Publicar Crítica</button>
-            </form>
+                <div class="form-group">
+                    <label>3. Resenha rápida</label>
+                    <textarea id="review-text" rows="2" placeholder="O que achou?"></textarea>
+                </div>
+                <button class="btn-primary" onclick="saveReview()">Salvar no Diário</button>
+            </div>
         </div>
     </div>
+</div>
 
-    <!-- Supabase SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
