@@ -13,55 +13,44 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 3500);
 }
 
-// --- LÓGICA DE LOGIN (login.html) ---
+// Verifica a sessão de forma segura para não criar loop
+async function checkAuthState() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const isAuthPage = window.location.pathname.includes('login.html') || window.location.pathname.includes('register.html');
+
+    if (session && isAuthPage) {
+        window.location.href = 'index.html'; // Se logado e na tela de login, vai pro app
+    } else if (!session && !isAuthPage) {
+        window.location.href = 'login.html'; // Se não logado e no app, vai pro login
+    }
+}
+checkAuthState();
+
+// --- LÓGICA DE LOGIN ---
 async function fazerLogin() {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
-    
-    if (!email || !password) {
-        return showToast("Preencha e-mail e senha.", "error");
-    }
+    if (!email || !password) return showToast("Preencha e-mail e senha.", "error");
 
     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    
-    if (error) {
-        showToast("Erro no login: " + error.message, "error");
-    }
-    // O redirecionamento é feito pelo onAuthStateChange abaixo
+    if (error) showToast("Erro no login: " + error.message, "error");
 }
 
-// --- LÓGICA DE CADASTRO (register.html) ---
+// --- LÓGICA DE CADASTRO ---
 async function fazerCadastro() {
     const name = document.getElementById('reg-name').value;
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
-    
-    if (!name || !email || !password) {
-        return showToast("Preencha todos os campos.", "error");
-    }
+    if (!name || !email || !password) return showToast("Preencha todos os campos.", "error");
 
-    // Cria a conta no Supabase, enviando o nome para os metadados
     const { error } = await supabaseClient.auth.signUp({ 
-        email, 
-        password, 
-        options: { data: { full_name: name } } 
+        email, password, options: { data: { full_name: name } } 
     });
     
     if (error) {
         showToast("Erro ao cadastrar: " + error.message, "error");
     } else {
         showToast("Conta criada com sucesso! Faça login.", "success");
-        // Redireciona para o login após 2 segundos
-        setTimeout(() => {
-            window.location.href = 'login.html';
-        }, 2000);
+        setTimeout(() => window.location.href = 'login.html', 2000);
     }
 }
-
-// --- VERIFICAÇÃO DE SESSÃO ---
-// Se o usuário já estiver logado, pula direto para o app
-supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (session && (window.location.pathname.includes('login.html') || window.location.pathname.includes('register.html') || window.location.pathname === '/' || window.location.pathname === '/frontend/')) {
-        window.location.href = 'index.html'; 
-    }
-});

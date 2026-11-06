@@ -624,3 +624,96 @@ body {
         margin: 20px 0;
     }
 }
+
+/* =========================================
+   MELHORIAS DE PERFIL E EDIÇÃO
+   ========================================= */
+
+/* Botão de Sair Bonito (Desktop) */
+.btn-logout-sidebar {
+    margin-top: auto;
+    background: #fff0ed;
+    color: #d32f2f;
+    border: 1px solid #ffcdd2;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 14px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: 0.2s;
+    width: 100%;
+}
+.btn-logout-sidebar:hover { background: #ffcdd2; }
+
+/* Avatar Editável */
+.avatar-container {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 15px;
+}
+
+.avatar-container .avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    margin: 0;
+    border: 3px solid var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.btn-edit-avatar {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    background: var(--primary);
+    color: white;
+    border: 2px solid var(--surface);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: 0.2s;
+}
+.btn-edit-avatar:hover { transform: scale(1.1); }
+
+/* Upload de Avatar */
+.upload-avatar-area {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 2px dashed var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    cursor: pointer;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+}
+.upload-avatar-area i { font-size: 24px; color: var(--text-light); }
+.upload-avatar-area img { width: 100%; height: 100%; object-fit: cover; position: absolute; }
+
+/* Botão de Editar Review dentro do Modal */
+.btn-edit-review {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: 0.2s;
+}
+.btn-edit-review:hover { background: var(--border); }

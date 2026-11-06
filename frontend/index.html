@@ -14,7 +14,7 @@
 
     <div id="app">
         
-        <!-- ================= SIDEBAR ESQUERDA (DESKTOP) ================= -->
+        <!-- ================= SIDEBAR ESQUERDA ================= -->
         <aside class="sidebar-left">
             <h1 class="logo-sidebar">FoodCritic</h1>
             
@@ -33,7 +33,10 @@
                 </button>
             </nav>
 
-            <button class="btn-logout-mobile" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i></button>
+            <!-- Botão de sair redesenhado -->
+            <button class="btn-logout-sidebar" onclick="fazerLogout()">
+                <i class="fas fa-sign-out-alt"></i> <span>Sair da conta</span>
+            </button>
         </aside>
 
         <!-- ================= CONTEÚDO CENTRAL ================= -->
@@ -42,7 +45,7 @@
             <section id="view-home" class="view active">
                 <div class="mobile-header">
                     <h1 class="logo">FoodCritic</h1>
-                    <button class="btn-logout" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i></button>
+                    <button class="btn-logout-mobile" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i></button>
                 </div>
 
                 <div class="feed-header">
@@ -54,23 +57,14 @@
                 </div>
 
                 <div class="stories-container" id="recommendations-container"></div>
-
-                <div class="feed-title-container">
-                    <h3 class="section-title">Perto de você</h3>
-                </div>
-
+                <div class="feed-title-container"><h3 class="section-title">Perto de você</h3></div>
                 <div id="home-feed-container" class="feed-single-column"></div>
             </section>
 
             <!-- VIEW 2: RESTAURANTES -->
             <section id="view-restaurants" class="view">
-                <div class="mobile-header">
-                    <h1 class="logo">FoodCritic</h1>
-                </div>
-                
-                <div class="view-header">
-                    <h2 class="section-title">Guia de Restaurantes</h2>
-                </div>
+                <div class="mobile-header"><h1 class="logo">FoodCritic</h1></div>
+                <div class="view-header"><h2 class="section-title">Guia de Restaurantes</h2></div>
                 
                 <div class="filter-chips" id="category-filters">
                     <button class="chip active" onclick="setFiltroCategoria('Todas', this)">Todas</button>
@@ -87,15 +81,19 @@
 
             <!-- VIEW 3: PERFIL -->
             <section id="view-profile" class="view">
-                <div class="mobile-header">
-                    <h1 class="logo">FoodCritic</h1>
-                </div>
+                <div class="mobile-header"><h1 class="logo">FoodCritic</h1></div>
 
                 <div class="profile-header">
-                    <div class="avatar"><i class="fas fa-user"></i></div>
-                    <h2>Meu Diário</h2>
+                    <!-- Botão de Editar Perfil -->
+                    <div class="avatar-container">
+                        <img id="profile-avatar-img" src="https://ui-avatars.com/api/?name=U&background=random" class="avatar" style="object-fit: cover;">
+                        <button class="btn-edit-avatar" onclick="openEditProfileModal()"><i class="fas fa-pen"></i></button>
+                    </div>
+                    
+                    <h2 id="profile-name-display">Carregando...</h2>
                     <p id="profile-email" class="text-light"></p>
                     <p id="profile-message" style="font-weight: bold; color: var(--primary); margin-top: 10px;"></p>
+                    
                     <div class="profile-stats">
                         <div><strong id="stat-reviews">0</strong><span>Avaliações</span></div>
                         <div><strong id="stat-restaurants">0</strong><span>Restaurantes</span></div>
@@ -106,31 +104,26 @@
             </section>
         </main>
 
-        <!-- ================= SIDEBAR DIREITA (DESKTOP) ================= -->
+        <!-- ================= SIDEBAR DIREITA ================= -->
         <aside class="sidebar-right">
-            <!-- Perfil Resumido -->
             <div class="user-profile-card">
-                <img src="https://ui-avatars.com/api/?name=User&background=random" id="sidebar-avatar" class="avatar-small" style="width: 56px; height: 56px;">
+                <img id="sidebar-avatar-img" src="https://ui-avatars.com/api/?name=U&background=random" class="avatar-small" style="width: 56px; height: 56px; object-fit: cover;">
                 <div class="user-info">
                     <strong id="sidebar-user-name">Usuário</strong>
                     <span id="sidebar-user-email" class="text-light">email@exemplo.com</span>
                 </div>
             </div>
 
-            <!-- Sugestões -->
             <div class="suggestions-card">
                 <div class="suggestions-header">
                     <h4>Sugestões para você</h4>
                     <a href="#" style="color: var(--text); font-size: 13px; font-weight: bold;">Ver todos</a>
                 </div>
-                <div id="sidebar-suggestions" class="suggestions-list">
-                    <!-- Preenchido via JS -->
-                </div>
+                <div id="sidebar-suggestions" class="suggestions-list"></div>
             </div>
 
-            <p class="sidebar-footer">Sobre · Ajuda · Imprensa · API · Carreiras · Privacidade · Termos<br><br>© 2024 FOODCRITIC FROM META</p>
+            <p class="sidebar-footer">Sobre · Ajuda · Imprensa · API · Carreiras · Privacidade · Termos<br><br>© 2024 FOODCRITIC</p>
         </aside>
-
     </div>
 
     <!-- BOTTOM NAV (Mobile) -->
@@ -141,6 +134,52 @@
         <button class="nav-btn" onclick="switchView('profile', this)"><i class="fas fa-user"></i><span>Diário</span></button>
         <button class="nav-btn" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i><span>Sair</span></button>
     </nav>
+
+    <!-- MODAL: EDITAR PERFIL -->
+    <div class="modal-overlay" id="edit-profile-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Editar Perfil</h2>
+                <button class="close-btn" onclick="closeModal('edit-profile-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group text-center">
+                    <label>Foto de Perfil</label>
+                    <label for="avatar-upload" class="upload-avatar-area" id="avatar-preview-area">
+                        <i class="fas fa-camera"></i>
+                    </label>
+                    <input type="file" id="avatar-upload" accept="image/*" onchange="previewAvatar(event)">
+                </div>
+                <div class="form-group">
+                    <label>Seu Nome</label>
+                    <input type="text" id="edit-profile-name" placeholder="Como quer ser chamado?">
+                </div>
+                <button class="btn-primary btn-block mt-2" onclick="salvarPerfil()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITAR REVIEW -->
+    <div class="modal-overlay" id="edit-review-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Editar Avaliação</h2>
+                <button class="close-btn" onclick="closeModal('edit-review-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-review-id">
+                <div class="form-group">
+                    <label>Nota</label>
+                    <input type="number" id="edit-review-rating" min="1" max="5" value="5" style="text-align:center; font-size:20px; font-weight:bold;">
+                </div>
+                <div class="form-group">
+                    <label>Sua opinião</label>
+                    <textarea id="edit-review-text" rows="4" maxlength="280"></textarea>
+                </div>
+                <button class="btn-primary btn-block mt-2" onclick="salvarEdicaoReview()">Atualizar Avaliação</button>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL: RESTAURANTE -->
     <div class="modal-overlay" id="restaurant-details-modal">
@@ -165,18 +204,16 @@
         </div>
     </div>
 
-    <!-- MODAL: NOVA REVIEW -->
+    <!-- MODAL: NOVA REVIEW (Mantido) -->
     <div class="modal-overlay" id="new-review-modal">
         <div class="modal">
             <div class="modal-header">
                 <h2>Registrar Refeição</h2>
                 <button class="close-btn" onclick="closeModal('new-review-modal')">&times;</button>
             </div>
-            
             <div class="modal-body">
                 <label for="photo-upload" class="upload-area" id="photo-preview-area" style="aspect-ratio: 16/9; margin-bottom: 20px;">
-                    <i class="fas fa-camera"></i>
-                    <span>Adicionar foto do prato</span>
+                    <i class="fas fa-camera"></i><span>Adicionar foto do prato</span>
                 </label>
                 <input type="file" id="photo-upload" accept="image/*" capture="environment" onchange="previewImage(event)">
 
@@ -184,29 +221,19 @@
                     <label>O que é isso? (Prato)</label>
                     <input type="text" id="review-dish" placeholder="Ex: Hambúrguer Clássico">
                 </div>
-
                 <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Quanto custou? (R$)</label>
-                        <input type="text" id="review-price" placeholder="0,00" oninput="applyCurrencyMask(this)">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>Quando foi?</label>
-                        <input type="date" id="review-date">
-                    </div>
+                    <div class="form-group" style="flex: 1;"><label>Quanto custou? (R$)</label><input type="text" id="review-price" placeholder="0,00" oninput="applyCurrencyMask(this)"></div>
+                    <div class="form-group" style="flex: 1;"><label>Quando foi?</label><input type="date" id="review-date"></div>
                 </div>
-
                 <div class="form-group">
                     <label>Onde você comeu?</label>
                     <select id="review-location" onchange="toggleNovoRestaurante(this)">
-                        <option value="" disabled selected>Selecione o restaurante...</option>
+                        <option value="" disabled selected>Selecione...</option>
                     </select>
                 </div>
                 <div class="form-group" id="new-rest-container" style="display: none;">
-                    <label>Nome do novo restaurante</label>
-                    <input type="text" id="new-rest-name" placeholder="Ex: Burger King">
+                    <label>Nome do novo restaurante</label><input type="text" id="new-rest-name" placeholder="Ex: Burger King">
                 </div>
-
                 <div class="form-group">
                     <label>Categoria do local</label>
                     <select id="review-category">
@@ -218,16 +245,10 @@
                         <option value="Outra">Outra</option>
                     </select>
                 </div>
-
                 <div style="display: flex; gap: 15px; margin-bottom: 15px; background: var(--bg); padding: 15px; border-radius: 10px;">
-                    <label style="font-size: 0.9rem; display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                        <input type="checkbox" id="dish-vegetarian" style="width: auto; margin:0;"> 🌱 Vegetariano
-                    </label>
-                    <label style="font-size: 0.9rem; display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                        <input type="checkbox" id="dish-vegan" style="width: auto; margin:0;"> 🌿 Vegano
-                    </label>
+                    <label><input type="checkbox" id="dish-vegetarian"> 🌱 Vegetariano</label>
+                    <label><input type="checkbox" id="dish-vegan"> 🌿 Vegano</label>
                 </div>
-
                 <div class="form-group">
                     <label>Avaliação e Comentário</label>
                     <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
@@ -235,9 +256,8 @@
                         <input type="number" id="review-rating" min="1" max="5" value="5" style="width: 80px; text-align: center; font-size: 20px; font-weight: bold; padding: 5px;">
                         <span style="color: #ffb300; font-size: 20px;">⭐</span>
                     </div>
-                    <textarea id="review-text" rows="3" maxlength="280" placeholder="O que achou? (Opcional)"></textarea>
+                    <textarea id="review-text" rows="3" maxlength="280" placeholder="O que achou?"></textarea>
                 </div>
-
                 <button class="btn-primary btn-block" style="margin-top: 10px; padding: 16px; font-size: 18px;" onclick="saveReview()">Salvar no Diário</button>
             </div>
         </div>
