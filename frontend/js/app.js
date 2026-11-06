@@ -5,37 +5,33 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_
 let currentUser = null;
 let allRestaurants = [];
 let currentCategory = 'Todas';
-let deleteTimeout = null;
-let currentRestaurantId = null;
 
-// --- 0. TOASTS ---
-function showToast(message, type = 'info', undoAction = null) {
+function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.innerHTML = `<span>${message}</span>`;
-    
-    if (undoAction) {
-        const btn = document.createElement('button');
-        btn.innerText = 'Desfazer';
-        btn.style.cssText = 'margin-left:15px; background:none; border:none; color:var(--primary); font-weight:bold; cursor:pointer; text-decoration:underline;';
-        btn.onclick = () => { undoAction(); toast.remove(); };
-        toast.appendChild(btn);
-    }
-
     container.appendChild(toast);
-    if (!undoAction) setTimeout(() => toast.remove(), 3500);
+    setTimeout(() => toast.remove(), 3500);
 }
 
-// --- 1. AUTH ---
+// --- AUTH E INICIALIZAÇÃO ---
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (!session) {
         window.location.href = 'login.html';
     } else {
         currentUser = session.user;
-        document.getElementById('profile-email').textContent = currentUser.email;
-        document.getElementById('greeting-text').textContent = `Onde comer hoje, ${currentUser.email.split('@')[0]}?`;
         
+        // Popula dados do usuário na Sidebar Direita (Desktop) e Mobile
+        const name = currentUser.user_metadata.full_name || currentUser.email.split('@')[0];
+        document.getElementById('profile-email').textContent = currentUser.email;
+        document.getElementById('sidebar-user-name').textContent = name;
+        document.getElementById('sidebar-user-email').textContent = currentUser.email;
+        document.getElementById('sidebar-avatar').src = `https://ui-avatars.com/api/?name=${name}&background=random`;
+        
+        document.getElementById('greeting-text').textContent = `Onde comer hoje, ${name}?`;
+        
+        await carregarSugestoesSidebar(); // Preenche a lateral direita
         carregarRecomendacoes();
         carregarFeed();
         carregarRestaurantes();
@@ -45,23 +41,42 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
  
 async function fazerLogout() { await supabaseClient.auth.signOut(); }
 
-// --- 2. RENDERIZAÇÃO ---
+// --- RENDERIZAÇÃO ---
+async function carregarSugestoesSidebar() {
+    // Exemplo: Busca 4 restaurantes aleatórios do banco para sugerir
+    const { data } = await supabaseClient.from('restaurants').select('id, name, category, reviews (food_photo_url)').limit(4);
+    if (!data) return;
 
-// STORIES (Recomendações)
+    const container = document.getElementById('sidebar-suggestions');
+    container.innerHTML = data.map(rest => {
+        let img = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=100&q=80';
+        if (rest.reviews && rest.reviews.length > 0 && rest.reviews[0].food_photo_url) {
+            img = rest.reviews[0].food_photo_url;
+        }
+        return `
+            <div class="suggestion-item">
+                <img src="${img}" style="border-radius: 8px;">
+                <div class="suggestion-info">
+                    <strong>${rest.name}</strong>
+                    <span>${rest.category || 'Restaurante'}</span>
+                </div>
+                <button class="btn-follow" onclick="openRestaurantDetails(${rest.id})">Ver</button>
+            </div>
+        `;
+    }).join('');
+}
+
 async function carregarRecomendacoes() {
     const container = document.getElementById('recommendations-container');
     const { data } = await supabaseClient.rpc('get_recommendations_for_user', { user_id_param: currentUser.id });
     
     if (!data || data.length === 0) { 
-        container.innerHTML = `<p class="text-light">Sem recomendações no momento.</p>`; 
+        container.innerHTML = `<p class="text-light" style="font-size:12px;">Sem recomendações no momento.</p>`; 
         return; 
     }
     
     const storiesHTML = await Promise.all(data.map(async (rec) => {
-        // Tenta achar uma foto real da review
         const { data: review } = await supabaseClient.from('reviews').select('food_photo_url').eq('restaurant_id', rec.restaurant_id).not('food_photo_url', 'is', null).limit(1).maybeSingle();
-        
-        // Fallback atualizado
         const imgUrl = review?.food_photo_url || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=150&q=80';
         
         return `
@@ -74,7 +89,6 @@ async function carregarRecomendacoes() {
     container.innerHTML = storiesHTML.join('');
 }
 
-// FEED (HOME)
 async function carregarFeed() {
     const feedContainer = document.getElementById('home-feed-container');
     const { data } = await supabaseClient.from('reviews')
@@ -96,7 +110,6 @@ async function carregarFeed() {
 
         return `
             <div class="feed-card">
-                <!-- Clicar na imagem abre o modal do RESTAURANTE -->
                 <div class="feed-image-wrapper" onclick="openRestaurantDetails(${r.restaurant_id})">
                     <img src="${r.food_photo_url || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0'}" alt="${r.dishes?.name}">
                     <div class="feed-overlay">
@@ -118,10 +131,9 @@ async function carregarFeed() {
     }).join('');
 }
 
-// RESTAURANTES (GUIA)
+// Restaurantes, Perfil e Modais (Mantidos como antes)
 async function carregarRestaurantes() {
     const container = document.getElementById('restaurants-list-container');
-    // Adicionado 'food_photo_url' no select de reviews
     const { data, error } = await supabaseClient
         .from('restaurants')
         .select(`id, name, category, dishes (name, is_vegetarian, is_vegan), reviews (rating, food_photo_url)`)
@@ -133,13 +145,21 @@ async function carregarRestaurantes() {
     popularSelectRestaurantes();
 }
  
+function setFiltroCategoria(cat, btn) {
+    currentCategory = cat;
+    document.querySelectorAll('.filter-chips .chip').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    renderizarRestaurantes();
+}
+
 function renderizarRestaurantes() {
     const container = document.getElementById('restaurants-list-container');
+    
     let filtrados = allRestaurants.filter(rest => {
-        const matchCategory = currentCategory === 'Todas' || rest.category === currentCategory || 
-            (currentCategory === 'Vegetariano' && rest.dishes.some(d => d.is_vegetarian)) ||
-            (currentCategory === 'Vegano' && rest.dishes.some(d => d.is_vegan));
-        return matchCategory;
+        if (currentCategory === 'Todas') return true;
+        else if (currentCategory === 'Vegetariano') return rest.dishes && rest.dishes.some(d => d.is_vegetarian || d.is_vegan);
+        else if (currentCategory === 'Vegano') return rest.dishes && rest.dishes.some(d => d.is_vegan);
+        else return rest.category === currentCategory;
     });
  
     if (filtrados.length === 0) {
@@ -149,17 +169,13 @@ function renderizarRestaurantes() {
  
     container.innerHTML = filtrados.map(rest => {
         const pratosTexto = rest.dishes && rest.dishes.length > 0 
-            ? rest.dishes.map(d => {
-                let flag = d.is_vegan ? ' (Vegano)' : (d.is_vegetarian ? ' (Vegetariano)' : '');
-                return `${d.name}${flag}`;
-            }).join(', ')
+            ? rest.dishes.map(d => `${d.name}${d.is_vegan ? ' (Vegano)' : (d.is_vegetarian ? ' (Vegetariano)' : '')}`).join(', ')
             : 'Nenhum prato cadastrado';
  
         const totalReviews = rest.reviews ? rest.reviews.length : 0;
         const somaNotas = totalReviews > 0 ? rest.reviews.reduce((acc, curr) => acc + curr.rating, 0) : 0;
         const mediaNota = totalReviews > 0 ? (somaNotas / totalReviews).toFixed(1) : '--';
         
-        // LÓGICA DA CAPA: Pega a primeira foto de review que existir. Se não tiver, usa um placeholder.
         let coverImg = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'; 
         if (rest.reviews && rest.reviews.length > 0) {
             const reviewWithPhoto = rest.reviews.find(r => r.food_photo_url);
@@ -170,12 +186,8 @@ function renderizarRestaurantes() {
             <div class="rest-card" onclick="openRestaurantDetails(${rest.id})">
                 <img src="${coverImg}" class="rest-cover" alt="${rest.name}">
                 <div class="rest-content">
-                    <div class="rest-header">
-                        <h3>${rest.name}</h3>
-                    </div>
-                    <div class="rest-stats">
-                        <span class="star">★ ${mediaNota}</span> · <span>Provado por ${totalReviews} ${totalReviews === 1 ? 'pessoa' : 'pessoas'}</span>
-                    </div>
+                    <div class="rest-header"><h3>${rest.name}</h3></div>
+                    <div class="rest-stats"><span class="star">★ ${mediaNota}</span> · <span>Provado por ${totalReviews} ${totalReviews === 1 ? 'pessoa' : 'pessoas'}</span></div>
                     <div class="rest-category">${rest.category || 'Geral'}</div>
                     <div class="rest-dishes-text">${pratosTexto}</div>
                 </div>
@@ -183,26 +195,26 @@ function renderizarRestaurantes() {
         `;
     }).join('');
 }
-// DIÁRIO
+
 async function carregarDiario() {
     const { data } = await supabaseClient.from('reviews').select(`*, restaurants (name), dishes (name)`).eq('user_id', currentUser.id).order('created_at', { ascending: false });
     const grid = document.getElementById('diary-grid');
+    const messageEl = document.getElementById('profile-message');
     
-    document.getElementById('stat-reviews').innerText = data ? data.length : 0;
+    const numReviews = data ? data.length : 0;
+    document.getElementById('stat-reviews').innerText = numReviews;
     document.getElementById('stat-restaurants').innerText = data ? new Set(data.map(r => r.restaurant_id)).size : 0;
 
-    if (!data || data.length === 0) { 
-        grid.innerHTML = `
-            <div class="diary-empty">
-                <div class="diary-empty-squares">
-                    <div class="dashed-square"><i class="fas fa-plus"></i></div>
-                    <div class="dashed-square"><i class="fas fa-plus"></i></div>
-                    <div class="dashed-square"><i class="fas fa-plus"></i></div>
-                </div>
-                <h3>Seu diário está vazio</h3>
-                <p class="text-light">Toque no botão + depois da próxima refeição.</p>
-            </div>
-        `; 
+    if (numReviews === 0) {
+        messageEl.innerText = "Você ainda não tem avaliações. Que tal começar?";
+    } else if (numReviews === 1) {
+        messageEl.innerText = "Você tem 1 avaliação! Continue assim.";
+    } else {
+        messageEl.innerText = `Você tem ${numReviews} avaliações!`;
+    }
+
+    if (numReviews === 0) { 
+        grid.innerHTML = `<div class="diary-empty"><div class="diary-empty-squares"><div class="dashed-square"><i class="fas fa-plus"></i></div><div class="dashed-square"><i class="fas fa-plus"></i></div><div class="dashed-square"><i class="fas fa-plus"></i></div></div><h3>Seu diário está vazio</h3><p class="text-light">Toque no botão + depois da próxima refeição.</p></div>`; 
         return; 
     }
     
@@ -214,25 +226,15 @@ async function carregarDiario() {
     window.minhasReviews = data;
 }
 
-// --- 3. O NOVO MODAL DE RESTAURANTE ---
+// Modais de Restaurante
 async function openRestaurantDetails(restId) {
-    currentRestaurantId = restId;
-    const modal = document.getElementById('restaurant-details-modal');
     const dishesContainer = document.getElementById('rest-modal-dishes');
-    
-    dishesContainer.innerHTML = `<p class="text-light text-center">Carregando pratos...</p>`;
+    dishesContainer.innerHTML = `<p class="text-light text-center" style="padding: 20px;">Carregando...</p>`;
     openModal('restaurant-details-modal');
 
-    // Busca info do Restaurante
     const { data: rest } = await supabaseClient.from('restaurants').select('*').eq('id', restId).single();
-    
-    // Busca as Reviews
-    const { data: reviews } = await supabaseClient.from('reviews')
-        .select(`*, dishes (id, name), profiles (full_name)`)
-        .eq('restaurant_id', restId)
-        .order('created_at', { ascending: false });
+    const { data: reviews } = await supabaseClient.from('reviews').select(`*, dishes (id, name), profiles (full_name)`).eq('restaurant_id', restId).order('created_at', { ascending: false });
 
-    // LÓGICA DA CAPA DO MODAL
     let coverImg = 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80';
     if (reviews && reviews.length > 0) {
         const reviewWithPhoto = reviews.find(r => r.food_photo_url);
@@ -242,9 +244,8 @@ async function openRestaurantDetails(restId) {
     document.getElementById('rest-modal-img').src = coverImg;
     document.getElementById('rest-modal-name').innerText = rest.name;
     document.getElementById('rest-modal-category').innerText = rest.category || 'Geral';
-    
     const totalReviews = reviews ? reviews.length : 0;
-    document.getElementById('rest-modal-reviews').innerText = `Provado por ${totalReviews} ${totalReviews === 1 ? 'pessoa' : 'pessoas'}`;
+    document.getElementById('rest-modal-reviews').innerText = `Provado por ${totalReviews} pessoas`;
     
     if (totalReviews > 0) {
         const soma = reviews.reduce((acc, curr) => acc + curr.rating, 0);
@@ -254,29 +255,21 @@ async function openRestaurantDetails(restId) {
     }
 
     if (totalReviews === 0) {
-        dishesContainer.innerHTML = `<p class="text-light text-center" style="padding: 20px;">Nenhum prato registrado ainda.</p>`;
+        dishesContainer.innerHTML = `<p class="text-light text-center" style="padding: 20px;">Nenhum prato registrado.</p>`;
         return;
     }
 
     dishesContainer.innerHTML = reviews.map(r => {
         const autor = r.profiles?.full_name || 'Anônimo';
-        // Fallback para a foto do prato na lista interna
         const img = r.food_photo_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80';
-        
         return `
             <div class="dish-row">
                 <img src="${img}" class="dish-row-img">
                 <div class="dish-row-info">
-                    <div class="dish-row-top">
-                        <h4>${r.dishes?.name || 'Prato'}</h4>
-                        <span class="dish-row-price">R$ ${r.price_paid.toFixed(2).replace('.', ',')}</span>
-                    </div>
+                    <div class="dish-row-top"><h4>${r.dishes?.name}</h4><span class="dish-row-price">R$ ${r.price_paid.toFixed(2).replace('.', ',')}</span></div>
                     <div class="dish-row-rating">⭐ ${r.rating}</div>
                     <div class="dish-row-review">"${r.review_text || 'Sem comentários.'}"</div>
-                    <div class="dish-row-author">
-                        <img src="https://ui-avatars.com/api/?name=${autor}&background=random"> 
-                        por ${autor}
-                    </div>
+                    <div class="dish-row-author"><img src="https://ui-avatars.com/api/?name=${autor}&background=random"> por ${autor}</div>
                 </div>
             </div>
         `;
@@ -286,74 +279,47 @@ async function openRestaurantDetails(restId) {
 function openNewReviewForRestaurant() {
     closeModal('restaurant-details-modal');
     openNewReviewModal();
-    
-    // Preenche o select com o restaurante atual (se ele existir na lista)
     setTimeout(() => {
         const restName = document.getElementById('rest-modal-name').innerText;
         const select = document.getElementById('review-location');
-        if (select) select.value = restName;
+        if (select) {
+            const optionExists = Array.from(select.options).some(opt => opt.value === restName);
+            if (optionExists) select.value = restName;
+        }
     }, 100);
 }
 
-// --- 4. DETALHES DA MINHA REVIEW (DIÁRIO) ---
 function abrirDetalhesMinhaReview(id) {
     const review = window.minhasReviews?.find(r => r.id === id);
-    if (!review) return;
-
-    // Usamos o mesmo modal de restaurante para simplificar, 
-    // mas podemos focar na review específica.
-    openRestaurantDetails(review.restaurant_id);
+    if (review) openRestaurantDetails(review.restaurant_id);
 }
 
-async function deletarReview(id) {
-    closeModal('restaurant-details-modal');
-    showToast("Avaliação excluída.", "success", async () => {
-        clearTimeout(deleteTimeout);
-        showToast("Exclusão cancelada.", "info");
-        carregarFeed(); carregarDiario(); carregarRestaurantes();
-    });
-
-    deleteTimeout = setTimeout(async () => {
-        await supabaseClient.from('reviews').delete().eq('id', id);
-        carregarFeed(); carregarDiario(); carregarRestaurantes(); carregarRecomendacoes();
-    }, 4000);
-}
-
-// --- 5. FORMULÁRIO DE NOVA REVIEW ---
+// Navegação
 function switchView(viewName, btn) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
     document.getElementById(`view-${viewName}`).classList.add('active');
+    
+    // Atualiza todos os botões correspondentes (tanto sidebar quanto bottom nav)
     document.querySelectorAll(`.nav-btn[onclick*="'${viewName}'"]`).forEach(b => b.classList.add('active'));
 }
  
-function openModal(id) { 
-    document.getElementById(id).classList.add('active'); 
-    document.body.style.overflow = 'hidden'; // Trava o scroll do fundo
-}
-
-function closeModal(id) { 
-    document.getElementById(id).classList.remove('active'); 
-    document.body.style.overflow = ''; // Libera o scroll do fundo
-    
-    if (id === 'new-review-modal') {
-        nextStep(1);
-        document.getElementById('review-dish').value = '';
-        document.getElementById('review-price').value = '';
-        document.getElementById('review-text').value = '';
-        document.getElementById('photo-upload').value = '';
-        document.getElementById('photo-preview-area').innerHTML = `<i class="fas fa-camera"></i><span>Adicionar foto</span>`;
-        document.getElementById('btn-next-1').disabled = true;
-    }
-}
-
-function nextStep(step) {
-    document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
-    document.getElementById(`step-${step}`).classList.add('active');
-}
+function openModal(id) { document.getElementById(id).classList.add('active'); document.body.style.overflow = 'hidden'; }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); document.body.style.overflow = ''; }
 
 function openNewReviewModal() {
     popularSelectRestaurantes();
+    document.getElementById('review-dish').value = '';
+    document.getElementById('review-price').value = '';
+    document.getElementById('review-text').value = '';
+    document.getElementById('photo-upload').value = '';
+    document.getElementById('photo-preview-area').innerHTML = `<i class="fas fa-camera"></i><span>Adicionar foto do prato</span>`;
+    document.getElementById('dish-vegetarian').checked = false;
+    document.getElementById('dish-vegan').checked = false;
+    document.getElementById('review-location').value = '';
+    document.getElementById('review-category').value = '';
+    document.getElementById('new-rest-container').style.display = 'none';
+    document.getElementById('review-date').value = new Date().toISOString().split('T')[0];
     openModal('new-review-modal');
 }
 
@@ -372,10 +338,7 @@ function previewImage(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('photo-preview-area').innerHTML = `<img src="${e.target.result}">`;
-            document.getElementById('btn-next-1').disabled = false;
-        }
+        reader.onload = function(e) { document.getElementById('photo-preview-area').innerHTML = `<img src="${e.target.result}">`; }
         reader.readAsDataURL(file);
     }
 }
@@ -395,6 +358,7 @@ async function saveReview() {
     const category = document.getElementById('review-category').value;
     const rating = parseInt(document.getElementById('review-rating').value);
     const priceText = document.getElementById('review-price').value;
+    const dateInput = document.getElementById('review-date').value;
     const text = document.getElementById('review-text').value;
     const file = document.getElementById('photo-upload').files[0];
     
@@ -403,7 +367,9 @@ async function saveReview() {
  
     let location = locationSelect === 'NEW_RESTAURANT' ? newRestName : locationSelect;
     
-    if (!file || !dish || !location || !category) return showToast("Preencha todos os campos obrigatórios.", "error");
+    if (!file || !dish || !location || !category || !dateInput) {
+        return showToast("Preencha todos os campos obrigatórios (foto, prato, local, categoria e data).", "error");
+    }
  
     try {
         const options = { maxSizeMB: 1, maxWidthOrHeight: 1280, useWebWorker: true };
@@ -449,14 +415,16 @@ async function saveReview() {
             food_photo_url: publicUrl.publicUrl,
             rating: rating,
             price_paid: priceNum,
-            review_text: text
+            review_text: text,
+            eaten_at: new Date(dateInput).toISOString() // Salva a data escolhida
         }]);
  
         if (insertError) throw new Error("Erro no banco: " + insertError.message);
  
-        showToast("Review salva com sucesso!", "success");
+        showToast("Refeição registrada com sucesso!", "success");
         closeModal('new-review-modal');
         
+        // Atualiza tudo automaticamente conforme o fluxo
         carregarRecomendacoes();
         carregarFeed();
         carregarRestaurantes();

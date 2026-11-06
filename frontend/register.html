@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Conta - FoodCritic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="login-page">
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <div class="login-container">
+        <!-- Imagem de Capa -->
+        <div class="login-hero">
+            <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Comida">
+            <div class="login-hero-overlay"></div>
+        </div>
+
+        <!-- Conteúdo do Cadastro -->
+        <div class="login-content">
+            <h1 class="login-logo">Food<span>Critic</span></h1>
+            <h2 class="login-title">Crie sua conta.</h2>
+            <p class="login-subtitle">Comece a registrar suas melhores refeições.</p>
+
+            <!-- Formulário de Cadastro -->
+            <div class="login-form">
+                <div class="input-icon-group">
+                    <i class="far fa-user"></i>
+                    <input type="text" id="reg-name" placeholder="Seu nome">
+                </div>
+                <div class="input-icon-group">
+                    <i class="far fa-envelope"></i>
+                    <input type="email" id="reg-email" placeholder="Seu e-mail">
+                </div>
+                <div class="input-icon-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="reg-password" placeholder="Crie uma senha">
+                </div>
+                
+                <button class="btn-auth-primary" onclick="fazerCadastro()">Criar conta</button>
+            </div>
+
+            <!-- Rodapé -->
+            <p class="login-footer">
+                Já tem uma conta? <a href="login.html">Entrar</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>
