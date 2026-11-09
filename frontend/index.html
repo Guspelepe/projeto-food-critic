@@ -6,6 +6,7 @@
     <title>FoodCritic</title>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="app-body">
@@ -33,7 +34,6 @@
                 </button>
             </nav>
 
-            <!-- Botão de sair redesenhado -->
             <button class="btn-logout-sidebar" onclick="fazerLogout()">
                 <i class="fas fa-sign-out-alt"></i> <span>Sair da conta</span>
             </button>
@@ -54,6 +54,10 @@
                         <i class="fas fa-search"></i>
                         <input type="text" id="search-rest" placeholder="Busque por restaurantes, pratos...">
                     </div>
+
+                    <button class="btn-surpreenda" onclick="surpreendaMe()">
+                        <i class="fas fa-dice"></i> Surpreenda-me!
+                    </button>
                 </div>
 
                 <div class="stories-container" id="recommendations-container"></div>
@@ -76,6 +80,8 @@
                     <button class="chip" onclick="setFiltroCategoria('Vegano', this)">🌿 Vegano</button>
                 </div>
 
+                <div id="map"></div>
+
                 <div id="restaurants-list-container" class="restaurants-grid"></div>
             </section>
 
@@ -84,7 +90,6 @@
                 <div class="mobile-header"><h1 class="logo">FoodCritic</h1></div>
 
                 <div class="profile-header">
-                    <!-- Botão de Editar Perfil -->
                     <div class="avatar-container">
                         <img id="profile-avatar-img" src="https://ui-avatars.com/api/?name=U&background=random" class="avatar" style="object-fit: cover;">
                         <button class="btn-edit-avatar" onclick="openEditProfileModal()"><i class="fas fa-pen"></i></button>
@@ -98,6 +103,22 @@
                         <div><strong id="stat-reviews">0</strong><span>Avaliações</span></div>
                         <div><strong id="stat-restaurants">0</strong><span>Restaurantes</span></div>
                     </div>
+                </div>
+
+                                <!-- TAGS DE COMIDAS FAVORITAS -->
+                <div class="favorites-section">
+                    <h3 class="section-title">Minhas Comidas Favoritas</h3>
+                    <div class="tags-container" id="favorite-tags-container">
+                        <!-- As tags vão aparecer aqui via JavaScript -->
+                    </div>
+                    
+                    <div class="add-tag-group" id="add-tag-group">
+                        <input type="text" id="new-fav-tag" placeholder="Ex: Sushi, Pizza, Hambúrguer..." onkeypress="if(event.key === 'Enter') addFavoriteTag()">
+                        <button class="btn-primary" onclick="addFavoriteTag()"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <p class="text-light" id="tag-limit-warning" style="display: none; color: #d32f2f; margin-top: 5px; font-size: 12px;">
+                        Você já adicionou o limite de 5 comidas favoritas.
+                    </p>
                 </div>
                 
                 <div class="grid-container" id="diary-grid"></div>
@@ -204,7 +225,7 @@
         </div>
     </div>
 
-    <!-- MODAL: NOVA REVIEW (Mantido) -->
+    <!-- MODAL: NOVA REVIEW -->
     <div class="modal-overlay" id="new-review-modal">
         <div class="modal">
             <div class="modal-header">
@@ -263,8 +284,67 @@
         </div>
     </div>
 
+        <!-- MODAL: ONBOARDING DE PREFERÊNCIAS -->
+    <div class="modal-overlay" id="onboarding-modal">
+        <div class="modal modal-onboarding">
+            <div class="onboarding-header">
+                <h2>Bem-vindo ao FoodCritic! 🍽️</h2>
+                <p>Vamos personalizar suas recomendações. O que combina com você?</p>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Etapa 1: Dieta -->
+                <div class="onboarding-section">
+                    <h3>1. Qual é a sua dieta?</h3>
+                    <div class="onboarding-options" id="diet-options">
+                        <div class="preference-chip" onclick="selectSinglePreference(this, 'diet')" data-value="Como de tudo">
+                            <span class="emoji">🍖</span> Como de tudo
+                        </div>
+                        <div class="preference-chip" onclick="selectSinglePreference(this, 'diet')" data-value="Vegetariano">
+                            <span class="emoji">🥗</span> Vegetariano
+                        </div>
+                        <div class="preference-chip" onclick="selectSinglePreference(this, 'diet')" data-value="Vegano">
+                            <span class="emoji">🌱</span> Vegano
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Etapa 2: Evitar -->
+                <div class="onboarding-section">
+                    <h3>2. O que você não consome?</h3>
+                    <p class="text-light" style="margin-bottom: 10px; font-size: 13px;">Selecione tudo que você prefere evitar.</p>
+                    <div class="onboarding-options" id="avoid-options">
+                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Japonesa">
+                            🍣 Comida Japonesa
+                        </div>
+                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Gordurosa">
+                            🍔 Comida Gordurosa/Fast Food
+                        </div>
+                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Doce">
+                            🍰 Doces e Sobremesas
+                        </div>
+                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Apimentada">
+                            🌶️ Comida Apimentada
+                        </div>
+                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Frutos do Mar">
+                            🦐 Frutos do Mar
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-cta" style="border-radius: 0 0 24px 24px; position: sticky;">
+                <button class="btn-primary btn-block" onclick="salvarPreferencias()">
+                    Salvar e começar a explorar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts: ordem importa! Leaflet ANTES do app.js -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

@@ -149,12 +149,9 @@ input[type="file"] { display: none; }
 /* =========================================
    CORREÇÕES GERAIS E ZOOM (Estilo Instagram Web)
    ========================================= */
-body { 
-    background-color: #fafafa; /* Fundo cinza claro para o site */
-}
 
 #app {
-    background-color: var(--surface); /* O app em si é branco */
+    background-color: var(--surface);
 }
 
 /* Botão de Sair do Mobile */
@@ -195,27 +192,47 @@ body {
     .app-body { padding-bottom: 0; }
     .bottom-nav, .mobile-header { display: none !important; }
     
-    /* O App centraliza na tela, mas o fundo do site preenche as beiradas no zoom out */
+    /* App ocupa 100% da tela — sem barras nas laterais */
     #app { 
         display: flex; 
-        justify-content: center; 
-        max-width: 1200px; 
-        margin: 0 auto; 
+        width: 100%;
         min-height: 100vh;
         background: var(--surface);
-        box-shadow: 0 0 30px rgba(0,0,0,0.05); /* Sombra suave para destacar do fundo */
     }
 
-    /* --- 1. SIDEBAR ESQUERDA --- */
+    /* Sidebar esquerda fixa na borda */
     .sidebar-left {
         display: flex;
         flex-direction: column;
-        width: 250px;
+        width: 300px;
+        flex-shrink: 0;
         position: sticky;
         top: 0;
         height: 100vh;
-        padding: 40px 20px;
+        padding: 40px 24px;
         border-right: 1px solid var(--border);
+        background: var(--surface);
+    }
+
+    /* Conteúdo central: cresce, mas com largura máxima confortável */
+    .main-content {
+        flex: 1;
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 40px 50px;
+    }
+
+    /* Sidebar direita fixa na borda direita */
+    .sidebar-right {
+        display: flex;
+        flex-direction: column;
+        width: 400px;
+        flex-shrink: 0;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        padding: 40px 24px;
+        border-left: 1px solid var(--border);
         background: var(--surface);
     }
 
@@ -264,46 +281,6 @@ body {
         padding: 15px;
     }
 
-    /* Botão de Sair no Desktop Elegante */
-    .btn-logout-sidebar {
-        margin-top: auto;
-        background: #fff0ed;
-        color: #d32f2f;
-        border: 1px solid #ffcdd2;
-        cursor: pointer;
-        font-size: 15px;
-        font-weight: 700;
-        padding: 12px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        transition: 0.2s;
-    }
-    .btn-logout-sidebar:hover { background: #ffcdd2; }
-
-    /* --- 2. CONTEÚDO CENTRAL --- */
-    .main-content {
-        width: 600px;
-        margin: 0;
-        padding: 40px 30px;
-    }
-
-    .feed-header h2 { font-size: 32px; }
-    .feed-card { margin-bottom: 20px; }
-
-    /* --- 3. SIDEBAR DIREITA --- */
-    .sidebar-right {
-        display: flex;
-        flex-direction: column;
-        width: 320px;
-        position: sticky;
-        top: 0;
-        height: 100vh;
-        padding: 40px 20px;
-    }
-
     .user-profile-card {
         display: flex;
         align-items: center;
@@ -343,6 +320,7 @@ body {
     .modal-cover { height: 250px; }
     .modal-cta { border-radius: 0 0 var(--radius) var(--radius); }
 }
+
 /* =========================================
    ESTILOS DA TELA DE LOGIN E CADASTRO
    ========================================= */
@@ -367,7 +345,6 @@ body {
     overflow-y: auto;
 }
 
-/* Imagem de topo */
 .login-hero {
     width: 100%;
     height: 35vh;
@@ -391,7 +368,6 @@ body {
     background: linear-gradient(to top, var(--bg) 0%, transparent 60%);
 }
 
-/* Conteúdo */
 .login-content {
     padding: 20px 30px 40px;
     display: flex;
@@ -428,7 +404,6 @@ body {
     margin-bottom: 25px;
 }
 
-/* Botões Sociais */
 .social-login-group {
     display: flex;
     flex-direction: column;
@@ -465,7 +440,6 @@ body {
 .btn-google:hover { background-color: #111; }
 .btn-apple:hover { background-color: #f9f9f9; }
 
-/* Divisor "ou" */
 .login-divider {
     display: flex;
     align-items: center;
@@ -486,7 +460,6 @@ body {
     padding: 0 15px;
 }
 
-/* Inputs com Ícone */
 .input-icon-group {
     position: relative;
     margin-bottom: 15px;
@@ -517,7 +490,6 @@ body {
     border-color: var(--primary);
 }
 
-/* Correção do fundo amarelo do Autofill */
 .input-icon-group input:-webkit-autofill,
 .input-icon-group input:-webkit-autofill:hover, 
 .input-icon-group input:-webkit-autofill:focus, 
@@ -527,7 +499,6 @@ body {
     transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Botão Principal */
 .btn-auth-primary {
     width: 100%;
     padding: 16px;
@@ -546,7 +517,6 @@ body {
     background-color: #e64a19;
 }
 
-/* Rodapé */
 .login-footer {
     margin-top: 30px;
     text-align: center;
@@ -565,9 +535,6 @@ body {
     text-decoration: underline;
 }
 
-/* =========================================
-   DESKTOP DA TELA DE LOGIN (Tela Cheia)
-   ========================================= */
 @media (min-width: 900px) {
     .login-page {
         background: var(--surface);
@@ -628,8 +595,6 @@ body {
 /* =========================================
    MELHORIAS DE PERFIL E EDIÇÃO
    ========================================= */
-
-/* Botão de Sair Bonito (Desktop) */
 .btn-logout-sidebar {
     margin-top: auto;
     background: #fff0ed;
@@ -649,7 +614,6 @@ body {
 }
 .btn-logout-sidebar:hover { background: #ffcdd2; }
 
-/* Avatar Editável */
 .avatar-container {
     position: relative;
     width: 100px;
@@ -685,7 +649,6 @@ body {
 }
 .btn-edit-avatar:hover { transform: scale(1.1); }
 
-/* Upload de Avatar */
 .upload-avatar-area {
     width: 100px;
     height: 100px;
@@ -703,7 +666,6 @@ body {
 .upload-avatar-area i { font-size: 24px; color: var(--text-light); }
 .upload-avatar-area img { width: 100%; height: 100%; object-fit: cover; position: absolute; }
 
-/* Botão de Editar Review dentro do Modal */
 .btn-edit-review {
     background: var(--bg);
     color: var(--text);
@@ -717,3 +679,185 @@ body {
     transition: 0.2s;
 }
 .btn-edit-review:hover { background: var(--border); }
+
+/* Mapa (Leaflet) */
+#map {
+    height: 320px;
+    width: 100%;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    z-index: 1;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+/* Botão Surpreenda-me */
+.btn-surpreenda {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    margin-top: 15px;
+    background: linear-gradient(135deg, #ff5a36, #ff8c42);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(255, 90, 54, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-surpreenda:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 90, 54, 0.4);
+}
+
+/* =========================================
+   ONBOARDING E PREFERÊNCIAS
+   ========================================= */
+.modal-onboarding {
+    max-width: 500px;
+}
+
+.onboarding-header {
+    padding: 30px 20px 10px;
+    text-align: center;
+}
+
+.onboarding-header h2 {
+    font-size: 26px;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.onboarding-header p {
+    color: var(--text-light);
+    font-size: 15px;
+}
+
+.onboarding-section {
+    padding: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.onboarding-section h3 {
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: var(--text);
+}
+
+.onboarding-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.preference-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 18px;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.preference-chip:hover {
+    border-color: #ffb300;
+    background: #fffdf5;
+}
+
+.preference-chip.active {
+    border-color: var(--primary);
+    background: #fff0ed;
+    color: var(--primary);
+}
+
+.preference-chip .emoji {
+    font-size: 18px;
+}
+
+/* =========================================
+   TAGS DE COMIDAS FAVORITAS (PERFIL)
+   ========================================= */
+.favorites-section {
+    margin-top: 30px;
+    padding: 0 20px;
+    text-align: center;
+}
+
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 15px;
+    min-height: 40px;
+}
+
+.fav-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--primary);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(255, 90, 54, 0.2);
+    animation: fadeIn 0.3s ease;
+}
+
+.fav-tag i {
+    cursor: pointer;
+    font-size: 12px;
+    background: rgba(255, 255, 255, 0.3);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.fav-tag i:hover {
+    background: rgba(0, 0, 0, 0.2);
+    transform: scale(1.1);
+}
+
+.add-tag-group {
+    display: flex;
+    gap: 10px;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+.add-tag-group input {
+    flex: 1;
+    padding: 12px 15px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+}
+
+.add-tag-group input:focus {
+    border-color: var(--primary);
+}
+
+.add-tag-group button {
+    padding: 0 20px;
+    border-radius: 10px;
+}
