@@ -13,6 +13,11 @@ let favoriteFoods = [];
 
 let tempDiet = null;
 let tempAvoid = [];
+let pendingTagsSelection = [];
+let formDirty = false;
+let pendingDeleteTimer = null;
+let pendingDeleteReview = null; // { id, data }
+let myReviewsCache = []; // cache do diário para "Comi de novo"
 
 const POPULAR_FOODS = [
     "Hambúrguer", "Pizza", "Sushi", "Feijoada", "Churrasco", "Lasanha", "Macarrão", "Tacos", "Burrito", "Hot Dog",
@@ -31,13 +36,26 @@ const POPULAR_FOODS = [
     "Bolo de Cenoura", "Torta de Limão", "Açaí com Granola", "Sorvete de Creme", "Milk Shake de Chocolate", "Café Gelado", "Suco Natural", "Água de Coco", "Chopp Artesanal", "Vinho Tinto"
 ];
 
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', actionLabel = null, actionFn = null, duration = 4000) {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `<span>${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+    let html = `<span>${message}</span>`;
+    if (actionLabel && actionFn) {
+        const actionId = 'toast-action-' + Date.now();
+        html += `<button class="toast-action" id="${actionId}">${actionLabel}</button>`;
+        toast.innerHTML = html;
+        container.appendChild(toast);
+        document.getElementById(actionId).addEventListener('click', (e) => {
+            e.stopPropagation();
+            actionFn();
+            toast.remove();
+        });
+    } else {
+        toast.innerHTML = html;
+        container.appendChild(toast);
+    }
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, duration);
 }
 
 function setBtnLoading(btn, isLoading, originalText = "Salvar") {
@@ -113,8 +131,133 @@ async function initApp() {
     await carregarRecomendacoes();
     await carregarFeed();
     await carregarDiario();
+
+    setupGlobalUX();
 }
 initApp();
+
+// --- UX GLOBAL (Heurísticas 3 e 7) ---
+function setupGlobalUX() {
+    // Esc fecha modal ativo
+    document.addEventListener('keydown', (e) => {
+        const activeModal = document.querySelector('.modal-overlay.active');
+        const tag = (e.target.tagName || '').toLowerCase();
+        const typing = tag === 'input' || tag === 'textarea' || tag === 'select';
+
+        if (e.key === 'Escape' && activeModal) {
+            requestCloseModal(activeModal.id);
+            return;
+        }
+
+        // Atalhos só fora de campos de texto
+        if (typing) {
+            // Ctrl/Cmd + Enter salva no modal de nova review
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && activeModal && activeModal.id === 'new-review-modal') {
+                e.preventDefault();
+                saveReview();
+            }
+            return;
+        }
+
+        if ((e.key === 'n' || e.key === 'N') && !activeModal) {
+            e.preventDefault();
+            openNewReviewModal();
+        }
+        if (e.key === '/' && !activeModal) {
+            e.preventDefault();
+            const search = document.getElementById('search-rest');
+            if (search) { switchView('home'); search.focus(); }
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && activeModal && activeModal.id === 'new-review-modal') {
+            e.preventDefault();
+            saveReview();
+        }
+    });
+
+    // Clique no overlay fecha (com checagem de dirty)
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) requestCloseModal(overlay.id);
+        });
+    });
+
+    // Marca formulário de review como dirty
+    ['review-dish', 'review-price', 'review-text', 'review-location', 'review-category', 'review-rating', 'photo-upload',
+     'edit-review-dish', 'edit-review-price', 'edit-review-text', 'edit-review-date', 'edit-photo-upload'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('input', () => { formDirty = true; });
+        el.addEventListener('change', () => { formDirty = true; });
+    });
+
+    // Drag and drop na área de foto
+    const dropArea = document.getElementById('photo-preview-area');
+    const fileInput = document.getElementById('photo-upload');
+    if (dropArea && fileInput) {
+        ['dragenter', 'dragover'].forEach(evt => {
+            dropArea.addEventListener(evt, (e) => {
+                e.preventDefault(); e.stopPropagation();
+                dropArea.classList.add('drag-over');
+            });
+        });
+        ['dragleave', 'drop'].forEach(evt => {
+            dropArea.addEventListener(evt, (e) => {
+                e.preventDefault(); e.stopPropagation();
+                dropArea.classList.remove('drag-over');
+            });
+        });
+        dropArea.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files && files[0] && files[0].type.startsWith('image/')) {
+                const dt = new DataTransfer();
+                dt.items.add(files[0]);
+                fileInput.files = dt.files;
+                previewImage({ target: fileInput });
+                formDirty = true;
+            }
+        });
+    }
+}
+
+function requestCloseModal(id) {
+    if (!id) return;
+    const isDirtyForm = (id === 'new-review-modal' || id === 'edit-review-modal') && formDirty;
+    if (isDirtyForm) {
+        openUnsavedWarning(id);
+        return;
+    }
+    closeModal(id);
+}
+
+function openUnsavedWarning(modalId) {
+    const existing = document.getElementById('unsaved-warning');
+    if (existing) existing.remove();
+    const box = document.createElement('div');
+    box.id = 'unsaved-warning';
+    box.className = 'unsaved-warning-overlay';
+    box.innerHTML = `
+        <div class="unsaved-warning-card">
+            <h3>Alterações não salvas</h3>
+            <p>Você tem alterações que serão perdidas. Deseja sair mesmo assim?</p>
+            <div class="unsaved-warning-actions">
+                <button class="btn-text" id="unsaved-stay">Continuar editando</button>
+                <button class="btn-danger" id="unsaved-leave">Sair e perder</button>
+            </div>
+        </div>`;
+    document.body.appendChild(box);
+    document.getElementById('unsaved-stay').onclick = () => box.remove();
+    document.getElementById('unsaved-leave').onclick = () => {
+        box.remove();
+        formDirty = false;
+        closeModal(modalId);
+    };
+}
+
+function pularOnboarding() {
+    closeModal('onboarding-modal');
+    showToast('Você pode configurar preferências depois no perfil.', 'info');
+}
+
 
 async function fazerLogout() { 
     try { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; } 
@@ -142,85 +285,188 @@ async function carregarPerfil() {
         favoriteFoods = data.favorite_foods || [];
         
         renderizarFavoritos();
+        renderizarPreferencias();
+        const favStat = document.getElementById('stat-favorites');
+        if (favStat) favStat.innerText = favoriteFoods.length;
     }
 }
+
+function renderizarPreferencias() {
+    const container = document.getElementById('prefs-chips-container');
+    if (!container) return;
+    const prefs = userPreferences || [];
+    if (!prefs.length) {
+        container.innerHTML = `<span class="text-light">Nenhuma preferência definida. <button class="btn-link" onclick="reabrirOnboarding()">Configurar</button></span>`;
+        return;
+    }
+    const icons = {
+        'Como de tudo': '🍖', 'Vegetariano': '🥗', 'Vegano': '🌱',
+        'Sem Japonesa': '🍣', 'Sem Gordurosa': '🍔', 'Sem Doce': '🍰',
+        'Sem Apimentada': '🌶️', 'Sem Frutos do Mar': '🦐'
+    };
+    container.innerHTML = prefs.map(p => {
+        const icon = icons[p] || '✨';
+        return `<span class="pref-chip">${icon} ${p}</span>`;
+    }).join('');
+}
+
+function reabrirOnboarding() {
+    // pré-seleciona chips atuais
+    tempDiet = null;
+    tempAvoid = [];
+    document.querySelectorAll('#diet-options .preference-chip').forEach(c => {
+        c.classList.remove('active');
+        if ((userPreferences || []).includes(c.getAttribute('data-value'))) {
+            c.classList.add('active');
+            tempDiet = c.getAttribute('data-value');
+        }
+    });
+    document.querySelectorAll('#avoid-options .preference-chip').forEach(c => {
+        c.classList.remove('active');
+        const v = c.getAttribute('data-value');
+        if ((userPreferences || []).includes(v)) {
+            c.classList.add('active');
+            if (!tempAvoid.includes(v)) tempAvoid.push(v);
+        }
+    });
+    openModal('onboarding-modal');
+}
+
 
 function openTagSelectionModal() {
     if (favoriteFoods.length >= 5) {
         return showToast("Você já tem 5 comidas favoritas. Remova alguma para adicionar outra.", "error");
     }
-    document.getElementById('search-tag-input').value = '';
+    pendingTagsSelection = [];
+    const search = document.getElementById('search-tag-input');
+    if (search) search.value = '';
     renderizarTagsDisponiveis();
+    atualizarContadorTags();
     openModal('tag-selection-modal');
 }
 
 function renderizarTagsDisponiveis() {
     const grid = document.getElementById('tags-grid');
-    const termo = document.getElementById('search-tag-input').value.toLowerCase();
-    
-    const disponiveis = POPULAR_FOODS.filter(f => 
-        !favoriteFoods.includes(f) && f.toLowerCase().includes(termo)
+    if (!grid) return;
+    const termo = (document.getElementById('search-tag-input')?.value || '').toLowerCase();
+    const slotsRestantes = 5 - favoriteFoods.length;
+
+    const disponiveis = POPULAR_FOODS.filter(f =>
+        !favoriteFoods.some(ff => ff.toLowerCase() === f.toLowerCase()) &&
+        f.toLowerCase().includes(termo)
     );
 
     if (disponiveis.length === 0) {
-        grid.innerHTML = `<p class="text-light" style="grid-column: 1/-1; text-align: center;">Nenhuma opção encontrada. Adicione uma personalizada abaixo!</p>`;
+        grid.innerHTML = `<p class="text-light" style="grid-column:1/-1;text-align:center;padding:20px 0;">Nenhuma opção encontrada. Adicione uma personalizada abaixo!</p>`;
         return;
     }
 
-    grid.innerHTML = disponiveis.map(food => `
-        <div class="tag-option" onclick="selecionarTagDisponivel('${food}')">${food}</div>
-    `).join('');
+    grid.innerHTML = disponiveis.map(food => {
+        const selected = pendingTagsSelection.includes(food);
+        const safe = food.replace(/'/g, "\\'");
+        return `<div class="tag-option ${selected ? 'selected' : ''}" onclick="toggleTagSelection('${safe}')">
+            <span>${food}</span>
+            ${selected ? '<i class="fas fa-check"></i>' : ''}
+        </div>`;
+    }).join('');
 }
 
 function filtrarTagsDisponiveis() { renderizarTagsDisponiveis(); }
 
-async function validarEAdicionarTag(newTag) {
-    if (!newTag) return;
-    if (favoriteFoods.length >= 5) return showToast("Limite de 5 comidas favoritas atingido.", "error");
-    if (favoriteFoods.some(t => t.toLowerCase() === newTag.toLowerCase())) return showToast("Você já adicionou essa comida.", "error");
-
-    // ANTI-CONFLITO
-    const tagLower = newTag.toLowerCase();
-    const prefsLower = userPreferences.map(p => p.toLowerCase());
-    const conflitos = {
-        'sushi': ['sem japonesa', 'vegano', 'vegetariano'], 'temaki': ['sem japonesa', 'vegano', 'vegetariano'],
-        'yakisoba': ['sem japonesa', 'vegetariano'], 'hamburguer': ['sem gordurosa', 'vegano', 'vegetariano'],
-        'burger': ['sem gordurosa', 'vegano', 'vegetariano'], 'pizza': ['sem gordurosa', 'vegano'],
-        'carne': ['vegano', 'vegetariano', 'sem gordurosa'], 'churrasco': ['vegano', 'vegetariano', 'sem gordurosa'], 'bacon': ['vegano', 'vegetariano']
-    };
-
-    let conflitoDetectado = null;
-    for (const [termo, restricoes] of Object.entries(conflitos)) {
-        if (tagLower.includes(termo)) {
-            const restricaoEncontrada = restricoes.find(r => prefsLower.includes(r));
-            if (restricaoEncontrada) { conflitoDetectado = restricaoEncontrada; break; }
+function toggleTagSelection(food) {
+    const idx = pendingTagsSelection.indexOf(food);
+    if (idx >= 0) {
+        pendingTagsSelection.splice(idx, 1);
+    } else {
+        const total = favoriteFoods.length + pendingTagsSelection.length;
+        if (total >= 5) {
+            return showToast("Limite de 5 comidas favoritas.", "error");
         }
+        // anti-conflito antes de marcar
+        if (!validarTagSemConflito(food)) return;
+        pendingTagsSelection.push(food);
     }
-
-    if (conflitoDetectado) {
-        let nomeRestricao = conflitoDetectado.replace('sem ', '').replace('japonesa', 'Comida Japonesa').replace('gordurosa', 'Comida Gordurosa');
-        if (conflitoDetectado === 'vegano') nomeRestricao = 'Vegano';
-        if (conflitoDetectado === 'vegetariano') nomeRestricao = 'Vegetariano';
-        return showToast(`Conflito! Você evita ${nomeRestricao}, mas quer adicionar "${newTag}".`, "error");
-    }
-
-    favoriteFoods.push(newTag);
-    await salvarFavoritosBanco();
-    renderizarTagsDisponiveis(); 
+    renderizarTagsDisponiveis();
+    atualizarContadorTags();
 }
 
-function selecionarTagDisponivel(food) { validarEAdicionarTag(food); }
+function atualizarContadorTags() {
+    const el = document.getElementById('tag-selection-count');
+    if (!el) return;
+    const total = favoriteFoods.length + pendingTagsSelection.length;
+    el.textContent = `${total}/5 selecionadas`;
+    const btn = document.getElementById('btn-confirm-tags');
+    if (btn) {
+        btn.disabled = pendingTagsSelection.length === 0;
+        btn.innerHTML = pendingTagsSelection.length
+            ? `<i class="fas fa-check"></i> Confirmar (${pendingTagsSelection.length})`
+            : `<i class="fas fa-check"></i> Confirmar seleção`;
+    }
+}
+
+function validarTagSemConflito(newTag) {
+    const tagLower = newTag.toLowerCase();
+    const prefsLower = (userPreferences || []).map(p => p.toLowerCase());
+    const conflitos = {
+        'sushi': ['sem japonesa', 'vegano', 'vegetariano'],
+        'temaki': ['sem japonesa', 'vegano', 'vegetariano'],
+        'yakisoba': ['sem japonesa', 'vegetariano'],
+        'hamburguer': ['sem gordurosa', 'vegano', 'vegetariano'],
+        'burger': ['sem gordurosa', 'vegano', 'vegetariano'],
+        'pizza': ['sem gordurosa', 'vegano'],
+        'carne': ['vegano', 'vegetariano', 'sem gordurosa'],
+        'churrasco': ['vegano', 'vegetariano', 'sem gordurosa'],
+        'bacon': ['vegano', 'vegetariano']
+    };
+    for (const [termo, restricoes] of Object.entries(conflitos)) {
+        if (tagLower.includes(termo)) {
+            const r = restricoes.find(x => prefsLower.includes(x));
+            if (r) {
+                let nome = r.replace('sem ', '').replace('japonesa', 'Comida Japonesa').replace('gordurosa', 'Comida Gordurosa');
+                if (r === 'vegano') nome = 'Vegano';
+                if (r === 'vegetariano') nome = 'Vegetariano';
+                showToast(`Conflito! Você evita ${nome}, mas quer adicionar "${newTag}".`, "error");
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+async function confirmarSelecaoTags() {
+    if (pendingTagsSelection.length === 0) return;
+    for (const tag of pendingTagsSelection) {
+        if (favoriteFoods.length >= 5) break;
+        if (!favoriteFoods.some(t => t.toLowerCase() === tag.toLowerCase())) {
+            favoriteFoods.push(tag);
+        }
+    }
+    pendingTagsSelection = [];
+    await salvarFavoritosBanco();
+    closeModal('tag-selection-modal');
+    showToast("Comidas favoritas atualizadas!", "success");
+}
 
 function addCustomTag() {
     const input = document.getElementById('new-fav-tag');
-    validarEAdicionarTag(input.value.trim());
+    const val = (input?.value || '').trim();
+    if (!val) return;
+    if (favoriteFoods.length + pendingTagsSelection.length >= 5) {
+        return showToast("Limite de 5 comidas favoritas.", "error");
+    }
+    if (favoriteFoods.some(t => t.toLowerCase() === val.toLowerCase()) || pendingTagsSelection.some(t => t.toLowerCase() === val.toLowerCase())) {
+        return showToast("Você já adicionou essa comida.", "error");
+    }
+    if (!validarTagSemConflito(val)) return;
+    pendingTagsSelection.push(val);
     input.value = '';
+    renderizarTagsDisponiveis();
+    atualizarContadorTags();
 }
 
 async function removerFavorito(index) {
     favoriteFoods.splice(index, 1);
     await salvarFavoritosBanco();
-    renderizarTagsDisponiveis();
 }
 
 async function salvarFavoritosBanco() {
@@ -237,8 +483,19 @@ async function salvarFavoritosBanco() {
 
 function renderizarFavoritos() {
     const container = document.getElementById('favorite-tags-container');
-    if (!container) return; 
-    
+    if (!container) return;
+
+    const favStat = document.getElementById('stat-favorites');
+    if (favStat) favStat.innerText = favoriteFoods.length;
+
+    const warning = document.getElementById('tag-limit-warning');
+    if (warning) warning.style.display = favoriteFoods.length >= 5 ? 'block' : 'none';
+
+    if (!favoriteFoods.length) {
+        container.innerHTML = `<p class="empty-inline">Nenhuma comida favorita ainda. Toque em <strong>Adicionar</strong> para personalizar o feed.</p>`;
+        return;
+    }
+
     container.innerHTML = favoriteFoods.map((tag, index) => `
         <span class="fav-tag">${tag} <i class="fas fa-times" onclick="removerFavorito(${index})" title="Remover"></i></span>
     `).join('');
@@ -338,12 +595,16 @@ async function carregarFeed() {
             const diffDias = Math.floor((new Date() - dataReview) / (1000 * 60 * 60 * 24));
             const tempo = diffDias === 0 ? 'hoje' : (diffDias === 1 ? 'ontem' : `há ${diffDias} dias`);
 
-            const btnEdit = r.user_id === currentUser.id 
-                ? `<button class="btn-edit-review" onclick="event.stopPropagation(); abrirModalEditarReview(${r.id})"><i class="fas fa-pen"></i></button>` 
-                : '';
+            const isMine = r.user_id === currentUser.id;
+            const btnActions = isMine ? `
+                <div class="feed-actions">
+                    <button class="btn-icon" title="Comi de novo" onclick="event.stopPropagation(); repetirRefeicao(${r.id})"><i class="fas fa-redo"></i></button>
+                    <button class="btn-icon" title="Editar" onclick="event.stopPropagation(); abrirModalEditarReview(${r.id})"><i class="fas fa-pen"></i></button>
+                    <button class="btn-icon btn-icon-danger" title="Excluir" onclick="event.stopPropagation(); excluirReviewComUndo(${r.id})"><i class="fas fa-trash"></i></button>
+                </div>` : '';
 
             return `
-                <div class="feed-card">
+                <div class="feed-card" id="feed-card-${r.id}">
                     <div class="feed-image-wrapper" onclick="openRestaurantDetails(${r.restaurant_id})">
                         <img src="${r.food_photo_url || 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0'}" alt="${r.dishes?.name}">
                         <div class="feed-overlay">
@@ -359,7 +620,7 @@ async function carregarFeed() {
                             <span><strong>${autor}</strong> comeu aqui ${tempo}</span>
                             <p>"${r.review_text || 'Sem comentários.'}"</p>
                         </div>
-                        ${btnEdit}
+                        ${btnActions}
                     </div>
                 </div>
             `;
@@ -427,7 +688,7 @@ function renderizarRestaurantes() {
 }
 
 async function carregarDiario() {
-    const { data } = await supabaseClient.from('reviews').select(`*, restaurants (name)`).eq('user_id', currentUser.id).order('created_at', { ascending: false });
+    const { data } = await supabaseClient.from('reviews').select(`*, restaurants (id, name, category), dishes (name)`).eq('user_id', currentUser.id).order('created_at', { ascending: false });
     const grid = document.getElementById('diary-grid');
     const messageEl = document.getElementById('profile-message');
     const numReviews = data ? data.length : 0;
@@ -440,8 +701,129 @@ async function carregarDiario() {
         grid.innerHTML = `<div class="diary-empty"><div class="diary-empty-squares"><div class="dashed-square"><i class="fas fa-plus"></i></div><div class="dashed-square"><i class="fas fa-plus"></i></div><div class="dashed-square"><i class="fas fa-plus"></i></div></div><h3>Seu diário está vazio</h3></div>`; 
         return; 
     }
-    grid.innerHTML = data.map(review => `<div class="grid-item" onclick="openRestaurantDetails(${review.restaurant_id})"><img src="${review.food_photo_url || ''}" alt="Foto"></div>`).join('');
+    myReviewsCache = data || [];
+    grid.innerHTML = data.map(review => {
+        const preco = review.price_paid != null ? Number(review.price_paid).toFixed(2).replace('.', ',') : '—';
+        const dataStr = review.eaten_at
+            ? new Date(review.eaten_at).toLocaleDateString('pt-BR')
+            : new Date(review.created_at).toLocaleDateString('pt-BR');
+        const prato = review.dishes?.name || 'Prato';
+        const rest = review.restaurants?.name || 'Restaurante';
+        const foto = review.food_photo_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80';
+        return `
+        <div class="diary-card" id="diary-item-${review.id}">
+            <img class="diary-card-img" src="${foto}" alt="${prato}" onclick="openRestaurantDetails(${review.restaurant_id})">
+            <div class="diary-card-body">
+                <div class="diary-card-top">
+                    <h4 onclick="openRestaurantDetails(${review.restaurant_id})">${prato}</h4>
+                    <span class="diary-card-rating">★ ${review.rating}</span>
+                </div>
+                <p class="diary-card-meta">${rest} · R$ ${preco} · ${dataStr}</p>
+                <p class="diary-card-text">"${review.review_text || 'Sem comentário.'}"</p>
+                <div class="diary-card-actions">
+                    <button class="btn-chip" onclick="repetirRefeicao(${review.id})"><i class="fas fa-redo"></i> De novo</button>
+                    <button class="btn-chip" onclick="abrirModalEditarReview(${review.id})"><i class="fas fa-pen"></i> Editar</button>
+                    <button class="btn-chip btn-chip-danger" onclick="excluirReviewComUndo(${review.id})"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
 }
+
+// --- EXCLUIR COM UNDO (Heurística 3) ---
+async function excluirReviewComUndo(reviewId) {
+    // busca dados para poder restaurar
+    const { data: review, error } = await supabaseClient.from('reviews').select('*').eq('id', reviewId).single();
+    if (error || !review) return showToast("Não foi possível excluir.", "error");
+
+    // remove da UI imediatamente
+    const feedCard = document.getElementById(`feed-card-${reviewId}`);
+    const diaryItem = document.getElementById(`diary-item-${reviewId}`);
+    if (feedCard) feedCard.style.display = 'none';
+    if (diaryItem) diaryItem.style.display = 'none';
+
+    // cancela delete pendente anterior
+    if (pendingDeleteTimer) {
+        clearTimeout(pendingDeleteTimer);
+        // se havia outro pendente, confirma exclusão anterior agora
+        if (pendingDeleteReview) {
+            await supabaseClient.from('reviews').delete().eq('id', pendingDeleteReview.id);
+        }
+    }
+
+    pendingDeleteReview = { id: reviewId, data: review };
+
+    showToast("Avaliação excluída.", "info", "DESFAZER", () => {
+        desfazerExclusaoReview();
+    }, 5000);
+
+    pendingDeleteTimer = setTimeout(async () => {
+        if (pendingDeleteReview && pendingDeleteReview.id === reviewId) {
+            await supabaseClient.from('reviews').delete().eq('id', reviewId);
+            pendingDeleteReview = null;
+            pendingDeleteTimer = null;
+            carregarDiario();
+            carregarRestaurantes();
+        }
+    }, 5000);
+}
+
+async function desfazerExclusaoReview() {
+    if (!pendingDeleteReview) return;
+    clearTimeout(pendingDeleteTimer);
+    pendingDeleteTimer = null;
+
+    const feedCard = document.getElementById(`feed-card-${pendingDeleteReview.id}`);
+    const diaryItem = document.getElementById(`diary-item-${pendingDeleteReview.id}`);
+    if (feedCard) feedCard.style.display = '';
+    if (diaryItem) diaryItem.style.display = '';
+
+    pendingDeleteReview = null;
+    showToast("Exclusão desfeita.", "success");
+}
+
+// --- REPETIR REFEIÇÃO (Heurística 7) ---
+async function repetirRefeicao(reviewId) {
+    let review = myReviewsCache.find(r => r.id === reviewId);
+    if (!review) {
+        const { data } = await supabaseClient
+            .from('reviews')
+            .select(`*, restaurants (id, name, category), dishes (name)`)
+            .eq('id', reviewId)
+            .single();
+        review = data;
+    }
+    if (!review) return showToast("Não foi possível carregar a refeição.", "error");
+
+    openNewReviewModal();
+    setTimeout(() => {
+        const restName = review.restaurants?.name || '';
+        const dishName = review.dishes?.name || '';
+        const category = review.restaurants?.category || '';
+        const price = review.price_paid != null ? Number(review.price_paid).toFixed(2).replace('.', ',') : '';
+
+        const loc = document.getElementById('review-location');
+        const dish = document.getElementById('review-dish');
+        const cat = document.getElementById('review-category');
+        const priceEl = document.getElementById('review-price');
+        const rating = document.getElementById('review-rating');
+
+        if (loc && restName) {
+            // garante option
+            if (![...loc.options].some(o => o.value === restName)) {
+                loc.innerHTML += `<option value="${restName}">${restName}</option>`;
+            }
+            loc.value = restName;
+        }
+        if (dish) dish.value = dishName;
+        if (cat && category) cat.value = category;
+        if (priceEl) priceEl.value = price;
+        if (rating) rating.value = review.rating || 5;
+        formDirty = true;
+        showToast("Dados preenchidos! Só tire a nova foto e salve.", "success");
+    }, 150);
+}
+
 
 // --- MODAIS ---
 async function openRestaurantDetails(restId) {
@@ -505,8 +887,16 @@ function switchView(viewName) {
     }
 }
  
-function openModal(id) { document.getElementById(id).classList.add('active'); document.body.style.overflow = 'hidden'; }
-function closeModal(id) { document.getElementById(id).classList.remove('active'); document.body.style.overflow = ''; }
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+    document.body.style.overflow = '';
+    if (id === 'new-review-modal' || id === 'edit-review-modal') formDirty = false;
+}
 
 function openNewReviewModal() {
     popularSelectRestaurantes();
@@ -514,20 +904,39 @@ function openNewReviewModal() {
     document.getElementById('review-price').value = '';
     document.getElementById('review-text').value = '';
     document.getElementById('photo-upload').value = '';
-    document.getElementById('photo-preview-area').innerHTML = `<i class="fas fa-camera"></i><span>Adicionar foto</span>`;
+    document.getElementById('photo-preview-area').innerHTML = `<i class="fas fa-camera"></i><span>Adicionar foto do prato</span><small class="upload-hint">Clique ou arraste a imagem</small>`;
     document.getElementById('dish-vegetarian').checked = false;
     document.getElementById('dish-vegan').checked = false;
     document.getElementById('review-location').value = '';
     document.getElementById('review-category').value = '';
     document.getElementById('new-rest-container').style.display = 'none';
     document.getElementById('review-date').value = new Date().toISOString().split('T')[0];
+    formDirty = false;
     openModal('new-review-modal');
+}
+
+function cancelarNovaReview() {
+    requestCloseModal('new-review-modal');
 }
 
 function popularSelectRestaurantes() {
     const select = document.getElementById('review-location');
     select.innerHTML = '<option value="" disabled selected>Selecione o restaurante...</option>';
-    allRestaurants.forEach(rest => { select.innerHTML += `<option value="${rest.name}">${rest.name}</option>`; });
+    allRestaurants.forEach(rest => {
+        select.innerHTML += `<option value="${rest.name}" data-category="${rest.category || ''}">${rest.name}</option>`;
+    });
+}
+
+function onRestaurantChange(select) {
+    const opt = select.options[select.selectedIndex];
+    const cat = opt?.getAttribute('data-category');
+    const catSelect = document.getElementById('review-category');
+    if (cat && catSelect) {
+        // tenta casar categoria
+        const match = [...catSelect.options].find(o => o.value === cat);
+        if (match) catSelect.value = cat;
+    }
+    formDirty = true;
 }
 
 function toggleNovoRestaurante(select) {
@@ -782,31 +1191,119 @@ async function carregarRecomendacoes() {
 }
 
 async function abrirModalEditarReview(id) {
-    const { data, error } = await supabaseClient.from('reviews').select('rating, review_text').eq('id', id).single();
+    const { data, error } = await supabaseClient
+        .from('reviews')
+        .select(`*, dishes (id, name)`)
+        .eq('id', id)
+        .single();
     if (error || !data) return showToast("Erro ao carregar avaliação.", "error");
-    
+
     document.getElementById('edit-review-id').value = id;
-    document.getElementById('edit-review-rating').value = data.rating;
+    document.getElementById('edit-review-photo-url').value = data.food_photo_url || '';
+    document.getElementById('edit-review-dish').value = data.dishes?.name || '';
     document.getElementById('edit-review-text').value = data.review_text || '';
+    document.getElementById('edit-review-rating').value = data.rating || 5;
+    document.getElementById('edit-photo-upload').value = '';
+
+    const price = data.price_paid != null ? Number(data.price_paid).toFixed(2).replace('.', ',') : '';
+    document.getElementById('edit-review-price').value = price;
+
+    const dateVal = data.eaten_at
+        ? new Date(data.eaten_at).toISOString().split('T')[0]
+        : new Date(data.created_at).toISOString().split('T')[0];
+    document.getElementById('edit-review-date').value = dateVal;
+
+    const preview = document.getElementById('edit-photo-preview-area');
+    if (data.food_photo_url) {
+        preview.innerHTML = `<img src="${data.food_photo_url}" alt="Foto">`;
+    } else {
+        preview.innerHTML = `<i class="fas fa-camera"></i><span>Trocar foto do prato</span><small class="upload-hint">Opcional</small>`;
+    }
+
+    setEditRating(data.rating || 5);
+    updateEditCharCount();
+    formDirty = false;
     openModal('edit-review-modal');
+}
+
+function setEditRating(v) {
+    const val = Math.min(5, Math.max(1, parseInt(v) || 5));
+    document.getElementById('edit-review-rating').value = val;
+    document.querySelectorAll('#edit-star-picker button').forEach(btn => {
+        const n = parseInt(btn.getAttribute('data-v'));
+        btn.classList.toggle('active', n <= val);
+    });
+    formDirty = true;
+}
+
+function updateEditCharCount() {
+    const t = document.getElementById('edit-review-text');
+    const c = document.getElementById('edit-text-count');
+    if (t && c) c.textContent = `${(t.value || '').length}/280`;
+}
+
+function previewEditImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('edit-photo-preview-area').innerHTML = `<img src="${e.target.result}" alt="Nova foto">`;
+    };
+    reader.readAsDataURL(file);
+    formDirty = true;
 }
 
 async function salvarEdicaoReview() {
     const btn = document.querySelector('#edit-review-modal .btn-primary');
     const id = document.getElementById('edit-review-id').value;
-    const rating = parseInt(document.getElementById('edit-review-rating').value);
+    const rating = parseInt(document.getElementById('edit-review-rating').value) || 5;
     const text = document.getElementById('edit-review-text').value;
-    setBtnLoading(btn, true, "Atualizar Avaliação");
+    const dishName = document.getElementById('edit-review-dish').value.trim();
+    const priceText = document.getElementById('edit-review-price').value;
+    const dateInput = document.getElementById('edit-review-date').value;
+    const file = document.getElementById('edit-photo-upload').files[0];
+    let photoUrl = document.getElementById('edit-review-photo-url').value;
+
+    if (!dishName) return showToast("Informe o nome do prato.", "error");
+    if (rating < 1 || rating > 5) return showToast("Nota deve ser de 1 a 5.", "error");
+
+    setBtnLoading(btn, true, "Salvar alterações");
 
     try {
-        const { error } = await supabaseClient.from('reviews').update({ rating: rating, review_text: text }).eq('id', id);
+        if (file) {
+            const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1280, useWebWorker: true });
+            const fileName = `foods/${Date.now()}.${compressedFile.name.split('.').pop()}`;
+            const { error: uploadError } = await supabaseClient.storage.from('food-images').upload(fileName, compressedFile);
+            if (uploadError) throw new Error("Erro no upload da foto.");
+            photoUrl = supabaseClient.storage.from('food-images').getPublicUrl(fileName).data.publicUrl;
+        }
+
+        // atualiza nome do prato se houver dish_id
+        const { data: current } = await supabaseClient.from('reviews').select('dish_id').eq('id', id).single();
+        if (current?.dish_id && dishName) {
+            await supabaseClient.from('dishes').update({ name: dishName }).eq('id', current.dish_id);
+        }
+
+        const payload = {
+            rating,
+            review_text: text,
+            food_photo_url: photoUrl || null,
+            price_paid: priceText ? parseFloat(priceText.replace(',', '.')) : null,
+            eaten_at: dateInput ? new Date(dateInput).toISOString() : null
+        };
+
+        const { error } = await supabaseClient.from('reviews').update(payload).eq('id', id);
         if (error) throw error;
+
+        formDirty = false;
         showToast("Avaliação atualizada!", "success");
         closeModal('edit-review-modal');
-        carregarFeed(); carregarDiario(); carregarRestaurantes();
+        carregarFeed();
+        carregarDiario();
+        carregarRestaurantes();
     } catch (error) {
         showToast("Erro ao editar: " + error.message, "error");
     } finally {
-        setBtnLoading(btn, false, "Atualizar Avaliação");
+        setBtnLoading(btn, false, "Salvar alterações");
     }
 }
