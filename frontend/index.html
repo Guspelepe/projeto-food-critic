@@ -50,9 +50,11 @@
 
                 <div class="feed-header">
                     <h2 id="greeting-text">Onde comer hoje?</h2>
-                    <div class="search-container">
+                    <div class="search-container" style="position: relative;">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="search-rest" placeholder="Busque por restaurantes, pratos...">
+                        <input type="text" id="search-rest" placeholder="Busque por restaurantes, pratos..." autocomplete="off">
+                        <!-- Dropdown de resultados da busca -->
+                        <div id="search-dropdown" class="search-results-dropdown"></div>
                     </div>
 
                     <button class="btn-surpreenda" onclick="surpreendaMe()">
@@ -81,7 +83,6 @@
                 </div>
 
                 <div id="map"></div>
-
                 <div id="restaurants-list-container" class="restaurants-grid"></div>
             </section>
 
@@ -105,23 +106,22 @@
                     </div>
                 </div>
 
-                                <!-- TAGS DE COMIDAS FAVORITAS -->
+                <!-- TAGS DE COMIDAS FAVORITAS -->
                 <div class="favorites-section">
                     <h3 class="section-title">Minhas Comidas Favoritas</h3>
                     <div class="tags-container" id="favorite-tags-container">
                         <!-- As tags vão aparecer aqui via JavaScript -->
                     </div>
                     
-                    <div class="add-tag-group" id="add-tag-group">
-                        <input type="text" id="new-fav-tag" placeholder="Ex: Sushi, Pizza, Hambúrguer..." onkeypress="if(event.key === 'Enter') addFavoriteTag()">
-                        <button class="btn-primary" onclick="addFavoriteTag()"><i class="fas fa-plus"></i></button>
-                    </div>
+                    <button class="btn-primary" onclick="openTagSelectionModal()" style="margin-top: 10px; width: 100%;">
+                        <i class="fas fa-plus"></i> Adicionar Comida Favorita
+                    </button>
                     <p class="text-light" id="tag-limit-warning" style="display: none; color: #d32f2f; margin-top: 5px; font-size: 12px;">
                         Você já adicionou o limite de 5 comidas favoritas.
                     </p>
                 </div>
                 
-                <div class="grid-container" id="diary-grid"></div>
+                <div class="grid-container" id="diary-grid" style="margin-top: 20px;"></div>
             </section>
         </main>
 
@@ -156,6 +156,7 @@
         <button class="nav-btn" onclick="fazerLogout()"><i class="fas fa-sign-out-alt"></i><span>Sair</span></button>
     </nav>
 
+    <!-- MODAIS MANTIDOS -->
     <!-- MODAL: EDITAR PERFIL -->
     <div class="modal-overlay" id="edit-profile-modal">
         <div class="modal">
@@ -263,6 +264,8 @@
                         <option value="Japonesa">Japonesa</option>
                         <option value="Italiana">Italiana</option>
                         <option value="Brasileira">Brasileira</option>
+                        <option value="Vegano">Vegano</option>
+                        <option value="Vegetariano">Vegetariano</option>
                         <option value="Outra">Outra</option>
                     </select>
                 </div>
@@ -284,16 +287,14 @@
         </div>
     </div>
 
-        <!-- MODAL: ONBOARDING DE PREFERÊNCIAS -->
+    <!-- MODAL: ONBOARDING -->
     <div class="modal-overlay" id="onboarding-modal">
         <div class="modal modal-onboarding">
             <div class="onboarding-header">
                 <h2>Bem-vindo ao FoodCritic! 🍽️</h2>
                 <p>Vamos personalizar suas recomendações. O que combina com você?</p>
             </div>
-            
             <div class="modal-body">
-                <!-- Etapa 1: Dieta -->
                 <div class="onboarding-section">
                     <h3>1. Qual é a sua dieta?</h3>
                     <div class="onboarding-options" id="diet-options">
@@ -308,40 +309,55 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Etapa 2: Evitar -->
                 <div class="onboarding-section">
                     <h3>2. O que você não consome?</h3>
                     <p class="text-light" style="margin-bottom: 10px; font-size: 13px;">Selecione tudo que você prefere evitar.</p>
                     <div class="onboarding-options" id="avoid-options">
-                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Japonesa">
-                            🍣 Comida Japonesa
-                        </div>
-                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Gordurosa">
-                            🍔 Comida Gordurosa/Fast Food
-                        </div>
-                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Doce">
-                            🍰 Doces e Sobremesas
-                        </div>
-                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Apimentada">
-                            🌶️ Comida Apimentada
-                        </div>
-                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Frutos do Mar">
-                            🦐 Frutos do Mar
-                        </div>
+                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Japonesa">🍣 Comida Japonesa</div>
+                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Gordurosa">🍔 Comida Gordurosa</div>
+                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Doce">🍰 Doces</div>
+                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Apimentada">🌶️ Apimentada</div>
+                        <div class="preference-chip" onclick="toggleMultiPreference(this, 'avoid')" data-value="Sem Frutos do Mar">🦐 Frutos do Mar</div>
                     </div>
                 </div>
             </div>
-
             <div class="modal-cta" style="border-radius: 0 0 24px 24px; position: sticky;">
-                <button class="btn-primary btn-block" onclick="salvarPreferencias()">
-                    Salvar e começar a explorar
-                </button>
+                <button class="btn-primary btn-block" onclick="salvarPreferencias()">Salvar e começar a explorar</button>
             </div>
         </div>
     </div>
 
-    <!-- Scripts: ordem importa! Leaflet ANTES do app.js -->
+    <!-- MODAL: SELEÇÃO DE TAGS DE COMIDA -->
+    <div class="modal-overlay" id="tag-selection-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Escolha suas comidas favoritas</h2>
+                <button class="close-btn" onclick="closeModal('tag-selection-modal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-container" style="margin-bottom: 15px;">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-tag-input" placeholder="Buscar comida..." oninput="filtrarTagsDisponiveis()">
+                </div>
+                
+                <div id="tags-grid" class="tags-grid">
+                    <!-- Opções geradas via JS -->
+                </div>
+
+                <div class="custom-tag-section">
+                    <h4 style="margin-top: 20px; margin-bottom: 10px; font-size: 14px; color: var(--text-light);">Não achou? Adicione você mesmo:</h4>
+                    <div class="add-tag-group" id="add-tag-group" style="margin: 0;">
+                        <input type="text" id="new-fav-tag" placeholder="Ex: Lasanha da vó..." onkeypress="if(event.key === 'Enter') addCustomTag()">
+                        <button class="btn-primary" onclick="addCustomTag()"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <p class="text-light" id="tag-limit-warning" style="display: none; color: #d32f2f; margin-top: 5px; font-size: 12px;">
+                        Você já adicionou o limite de 5 comidas favoritas.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

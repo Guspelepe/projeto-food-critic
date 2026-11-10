@@ -9,11 +9,27 @@ let currentCategory = 'Todas';
 let map = null;
 let mapMarkers = [];
 let userPreferences = null; 
-let favoriteFoods = []; // Guarda as comidas favoritas (agora via localStorage)
+let favoriteFoods = []; 
 
-// Variáveis do Onboarding
 let tempDiet = null;
 let tempAvoid = [];
+
+const POPULAR_FOODS = [
+    "Hambúrguer", "Pizza", "Sushi", "Feijoada", "Churrasco", "Lasanha", "Macarrão", "Tacos", "Burrito", "Hot Dog",
+    "Sanduíche", "Salada", "Sopa", "Frango Grelhado", "Peixe", "Carne Bovina", "Carne Suína", "Costela", "Picanha", "Maminha",
+    "Alcatra", "Cupim", "Frutos do Mar", "Camarão", "Lagosta", "Ostra", "Sashimi", "Temaki", "Yakisoba", "Lamen",
+    "Udon", "Gyoza", "Ramen", "Curry", "Pad Thai", "Primavera", "Frango Frito", "Asa de Frango", "Batata Frita", "Onion Rings",
+    "Nuggets", "Milkshake", "Açaí", "Sorvete", "Bolo", "Torta", "Pudim", "Mousse", "Brigadeiro", "Beijinho",
+    "Pão de Queijo", "Coxinha", "Esfirra", "Quibe", "Empada", "Pastel", "Pizza Doce", "Crepe", "Waffle", "Panqueca",
+    "Omelete", "Ovo", "Tapioca", "Cuscuz", "Polenta", "Risoto", "Nhoque", "Ravioli", "Fettuccine", "Carbonara",
+    "Bolonhesa", "Pesto", "Margherita", "Calabresa", "Portuguesa", "Quatro Queijos", "Frango c/ Catupiry", "Vegetariana", "Vegana", "Comida Árabe",
+    "Comida Mexicana", "Comida Chinesa", "Comida Indiana", "Comida Tailandesa", "Comida Coreana", "Comida Francesa", "Comida Italiana", "Comida Japonesa", "Comida Brasileira", "Comida Argentina",
+    "Comida Peruana", "Comida Portuguesa", "Comida Espanhola", "Comida Grega", "Comida Turca", "Hambúrguer Artesanal", "Smash Burger", "Pizza Napolitana", "Sushi de Salmão", "Hot Roll",
+    "Temaki de Camarão", "Yakisoba de Frango", "Ramen de Porco", "Lamen Vegano", "Feijoada Light", "Churrasco Vegano", "Lasanha de Berinjela", "Macarrão Integral", "Taco Vegano", "Burrito de Carne",
+    "Cachorro Quente Completo", "Sanduíche Natural", "Salada Caesar", "Sopa de Cebola", "Frango à Parmegiana", "Filé de Peixe", "Picanha na Brasa", "Costela BBQ", "Camarão Empanado", "Polvo Grelhado",
+    "Batata Rústica", "Mandioca Frita", "Pão de Alho", "Queijo Coalho", "Pastel de Carne", "Pastel de Queijo", "Coxinha Cremosa", "Bolinha de Queijo", "Brigadeiro Gourmet", "Pudim de Leite",
+    "Bolo de Cenoura", "Torta de Limão", "Açaí com Granola", "Sorvete de Creme", "Milk Shake de Chocolate", "Café Gelado", "Suco Natural", "Água de Coco", "Chopp Artesanal", "Vinho Tinto"
+];
 
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
@@ -22,6 +38,17 @@ function showToast(message, type = 'info') {
     toast.innerHTML = `<span>${message}</span>`;
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 4000);
+}
+
+function setBtnLoading(btn, isLoading, originalText = "Salvar") {
+    if (!btn) return;
+    if (isLoading) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Carregando...`;
+    } else {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }
 
 // --- INICIALIZAÇÃO ---
@@ -33,16 +60,53 @@ async function initApp() {
     const name = currentUser.user_metadata.full_name || currentUser.email.split('@')[0];
     document.getElementById('greeting-text').textContent = `Onde comer hoje, ${name}?`;
     
-    // Carrega favoritos do LocalStorage
-    const savedFavs = localStorage.getItem(`favs_${currentUser.id}`);
-    favoriteFoods = savedFavs ? JSON.parse(savedFavs) : [];
-    
-    await carregarPerfil(); 
+    await carregarPerfil(); // Isso agora carrega favoriteFoods do banco
     await carregarRestaurantes();
 
-    // Se for usuário novo e não tiver preferências, abre modal de onboarding
     if (!userPreferences || userPreferences.length === 0) {
         openModal('onboarding-modal');
+    }
+
+    // --- CORREÇÃO DA BUSCA: Dropdown sem perder o foco ---
+    const searchInput = document.getElementById('search-rest');
+    const searchDropdown = document.getElementById('search-dropdown');
+    
+    if (searchInput && searchDropdown) {
+        searchInput.addEventListener('input', (e) => {
+            const termo = e.target.value.toLowerCase().trim();
+            if (termo.length < 1) {
+                searchDropdown.classList.remove('active');
+                return;
+            }
+
+            const resultados = allRestaurants.filter(rest => 
+                rest.name.toLowerCase().includes(termo) || 
+                (rest.category && rest.category.toLowerCase().includes(termo)) ||
+                (rest.dishes && rest.dishes.some(d => d.name.toLowerCase().includes(termo)))
+            ).slice(0, 5); // Limita a 5 resultados
+
+            if (resultados.length === 0) {
+                searchDropdown.innerHTML = `<div class="search-result-item" style="color:var(--text-light);">Nenhum resultado encontrado.</div>`;
+            } else {
+                searchDropdown.innerHTML = resultados.map(rest => `
+                    <div class="search-result-item" onclick="openRestaurantDetails(${rest.id}); document.getElementById('search-dropdown').classList.remove('active'); document.getElementById('search-rest').value = '';">
+                        <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=100&q=80">
+                        <div>
+                            <strong>${rest.name}</strong>
+                            <span>${rest.category || 'Restaurante'}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            searchDropdown.classList.add('active');
+        });
+
+        // Fecha o dropdown ao clicar fora
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+                searchDropdown.classList.remove('active');
+            }
+        });
     }
 
     await carregarSugestoesSidebar();
@@ -53,17 +117,15 @@ async function initApp() {
 initApp();
 
 async function fazerLogout() { 
-    // Limpa as tags do localStorage ao sair? (Opcional, mas mantém se quiser que persistam)
-    // localStorage.removeItem(`favs_${currentUser.id}`);
-    await supabaseClient.auth.signOut(); 
+    try { await supabaseClient.auth.signOut(); window.location.href = 'login.html'; } 
+    catch (err) { window.location.href = 'login.html'; }
 }
 
-// --- SISTEMA DE PREFERÊNCIAS E TAGS ---
+// --- PERFIL E TAGS ---
 async function carregarPerfil() {
     const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
     
     if (data) {
-        // 1. Nome e Avatar
         const nome = data.full_name || currentUser.email.split('@')[0];
         const avatarUrl = data.avatar_url || `https://ui-avatars.com/api/?name=${nome}&background=ff5a36&color=fff`;
         document.getElementById('sidebar-user-name').textContent = nome;
@@ -73,79 +135,65 @@ async function carregarPerfil() {
         document.getElementById('profile-email').textContent = currentUser.email;
         document.getElementById('profile-avatar-img').src = avatarUrl;
 
-        // 2. Preferências (Onboarding) - Puxadas do banco
-        let prefs = data.food_preferences || [];
-        if (typeof prefs === 'string') {
-            if (prefs.startsWith('{') && prefs.endsWith('}')) {
-                prefs = prefs.slice(1, -1).split(',').map(s => s.replace(/"/g, '').trim());
-            } else if (prefs !== '') {
-                prefs = prefs.split(',').map(s => s.trim());
-            }
-        }
-        userPreferences = Array.isArray(prefs) ? prefs : [];
-
-        // 3. Renderiza as tags favoritas (do localStorage)
+        // Puxa as preferências do banco
+        userPreferences = data.food_preferences || [];
+        
+        // Puxa as tags de comidas favoritas do banco (NOVA COLUNA)
+        favoriteFoods = data.favorite_foods || [];
+        
         renderizarFavoritos();
     }
 }
 
-// --- LÓGICA DAS TAGS DE COMIDA FAVORITA (LOCALSTORAGE) ---
-function renderizarFavoritos() {
-    const container = document.getElementById('favorite-tags-container');
-    const inputGroup = document.getElementById('add-tag-group');
-    const warning = document.getElementById('tag-limit-warning');
-
-    if (!container) return; // Caso a view não tenha sido carregada ainda
-
-    container.innerHTML = favoriteFoods.map((tag, index) => `
-        <span class="fav-tag">
-            ${tag} 
-            <i class="fas fa-times" onclick="removerFavorito(${index})" title="Remover"></i>
-        </span>
-    `).join('');
-
+function openTagSelectionModal() {
     if (favoriteFoods.length >= 5) {
-        inputGroup.style.display = 'none';
-        warning.style.display = 'block';
-    } else {
-        inputGroup.style.display = 'flex';
-        warning.style.display = 'none';
+        return showToast("Você já tem 5 comidas favoritas. Remova alguma para adicionar outra.", "error");
     }
+    document.getElementById('search-tag-input').value = '';
+    renderizarTagsDisponiveis();
+    openModal('tag-selection-modal');
 }
 
-function addFavoriteTag() {
-    const input = document.getElementById('new-fav-tag');
-    const newTag = input.value.trim();
+function renderizarTagsDisponiveis() {
+    const grid = document.getElementById('tags-grid');
+    const termo = document.getElementById('search-tag-input').value.toLowerCase();
+    
+    const disponiveis = POPULAR_FOODS.filter(f => 
+        !favoriteFoods.includes(f) && f.toLowerCase().includes(termo)
+    );
 
+    if (disponiveis.length === 0) {
+        grid.innerHTML = `<p class="text-light" style="grid-column: 1/-1; text-align: center;">Nenhuma opção encontrada. Adicione uma personalizada abaixo!</p>`;
+        return;
+    }
+
+    grid.innerHTML = disponiveis.map(food => `
+        <div class="tag-option" onclick="selecionarTagDisponivel('${food}')">${food}</div>
+    `).join('');
+}
+
+function filtrarTagsDisponiveis() { renderizarTagsDisponiveis(); }
+
+async function validarEAdicionarTag(newTag) {
     if (!newTag) return;
     if (favoriteFoods.length >= 5) return showToast("Limite de 5 comidas favoritas atingido.", "error");
     if (favoriteFoods.some(t => t.toLowerCase() === newTag.toLowerCase())) return showToast("Você já adicionou essa comida.", "error");
 
-    // 🚨 SISTEMA ANTI-CONFLITO 🚨
+    // ANTI-CONFLITO
     const tagLower = newTag.toLowerCase();
     const prefsLower = userPreferences.map(p => p.toLowerCase());
-
     const conflitos = {
-        'sushi': ['sem japonesa', 'vegano', 'vegetariano'],
-        'temaki': ['sem japonesa', 'vegano', 'vegetariano'],
-        'yakisoba': ['sem japonesa', 'vegetariano'],
-        'hamburguer': ['sem gordurosa', 'vegano', 'vegetariano'],
-        'burger': ['sem gordurosa', 'vegano', 'vegetariano'],
-        'pizza': ['sem gordurosa', 'vegano'],
-        'carne': ['vegano', 'vegetariano', 'sem gordurosa'],
-        'churrasco': ['vegano', 'vegetariano', 'sem gordurosa'],
-        'bacon': ['vegano', 'vegetariano']
+        'sushi': ['sem japonesa', 'vegano', 'vegetariano'], 'temaki': ['sem japonesa', 'vegano', 'vegetariano'],
+        'yakisoba': ['sem japonesa', 'vegetariano'], 'hamburguer': ['sem gordurosa', 'vegano', 'vegetariano'],
+        'burger': ['sem gordurosa', 'vegano', 'vegetariano'], 'pizza': ['sem gordurosa', 'vegano'],
+        'carne': ['vegano', 'vegetariano', 'sem gordurosa'], 'churrasco': ['vegano', 'vegetariano', 'sem gordurosa'], 'bacon': ['vegano', 'vegetariano']
     };
 
     let conflitoDetectado = null;
-
     for (const [termo, restricoes] of Object.entries(conflitos)) {
         if (tagLower.includes(termo)) {
             const restricaoEncontrada = restricoes.find(r => prefsLower.includes(r));
-            if (restricaoEncontrada) {
-                conflitoDetectado = restricaoEncontrada;
-                break;
-            }
+            if (restricaoEncontrada) { conflitoDetectado = restricaoEncontrada; break; }
         }
     }
 
@@ -153,124 +201,105 @@ function addFavoriteTag() {
         let nomeRestricao = conflitoDetectado.replace('sem ', '').replace('japonesa', 'Comida Japonesa').replace('gordurosa', 'Comida Gordurosa');
         if (conflitoDetectado === 'vegano') nomeRestricao = 'Vegano';
         if (conflitoDetectado === 'vegetariano') nomeRestricao = 'Vegetariano';
-
-        return showToast(`Conflito! Você adicionou "${newTag}" mas nas suas preferências diz que evita ${nomeRestricao}.`, "error");
+        return showToast(`Conflito! Você evita ${nomeRestricao}, mas quer adicionar "${newTag}".`, "error");
     }
 
-    // Se passou, adiciona e salva localmente
     favoriteFoods.push(newTag);
-    salvarFavoritosLocal();
+    await salvarFavoritosBanco();
+    renderizarTagsDisponiveis(); 
+}
+
+function selecionarTagDisponivel(food) { validarEAdicionarTag(food); }
+
+function addCustomTag() {
+    const input = document.getElementById('new-fav-tag');
+    validarEAdicionarTag(input.value.trim());
     input.value = '';
 }
 
-function removerFavorito(index) {
+async function removerFavorito(index) {
     favoriteFoods.splice(index, 1);
-    salvarFavoritosLocal();
+    await salvarFavoritosBanco();
+    renderizarTagsDisponiveis();
 }
 
-function salvarFavoritosLocal() {
-    renderizarFavoritos(); // Atualiza a tela na hora
-    // Salva no navegador vinculado ao ID do usuário
-    localStorage.setItem(`favs_${currentUser.id}`, JSON.stringify(favoriteFoods));
+async function salvarFavoritosBanco() {
+    renderizarFavoritos();
+    // SALVA NO BANCO DE DADOS
+    try {
+        await supabaseClient.from('profiles').update({ favorite_foods: favoriteFoods }).eq('id', currentUser.id);
+        carregarSugestoesSidebar();
+        carregarFeed();
+    } catch (e) {
+        console.error("Erro ao salvar tags", e);
+    }
+}
+
+function renderizarFavoritos() {
+    const container = document.getElementById('favorite-tags-container');
+    if (!container) return; 
     
-    // Recarrega as telas para refletir as novas tags
-    carregarSugestoesSidebar();
-    carregarFeed();
+    container.innerHTML = favoriteFoods.map((tag, index) => `
+        <span class="fav-tag">${tag} <i class="fas fa-times" onclick="removerFavorito(${index})" title="Remover"></i></span>
+    `).join('');
 }
 
-// --- FILTRO E INTELIGÊNCIA DE RECOMENDAÇÃO ---
+// --- FILTROS ---
 function filtrarRestaurantes(rests, prefs) {
     if (!prefs || prefs.length === 0) return rests; 
-
     try {
         return rests.filter(r => {
-            // 1. Filtro Dieta (Obrigatório)
-            if (prefs.includes('Vegano')) {
-                if (!r.dishes || !r.dishes.some(d => d.is_vegan)) return false;
-            } else if (prefs.includes('Vegetariano')) {
-                if (!r.dishes || !r.dishes.some(d => d.is_vegan || d.is_vegetarian)) return false;
-            }
-
-            // 2. Filtro "O que Evitar"
+            if (prefs.includes('Vegano') && (!r.dishes || !r.dishes.some(d => d.is_vegan))) return false;
+            if (prefs.includes('Vegetariano') && (!r.dishes || !r.dishes.some(d => d.is_vegan || d.is_vegetarian))) return false;
             if (prefs.includes('Sem Japonesa') && r.category === 'Japonesa') return false;
             if (prefs.includes('Sem Gordurosa') && r.category === 'Hamburguer') return false; 
             if (prefs.includes('Sem Doce') && r.category === 'Doces') return false;
-            if (prefs.includes('Sem Apimentada') && r.category === 'Apimentada') return false;
-            if (prefs.includes('Sem Frutos do Mar') && r.category === 'Frutos do Mar') return false;
-
             return true;
         });
-    } catch (err) {
-        return rests;
-    }
+    } catch (err) { return rests; }
 }
 
-// Verifica se o restaurante bate com alguma tag favorita
 function restauranteTemTagFavorita(rest) {
     if (!favoriteFoods || favoriteFoods.length === 0) return false;
-    
     const categoria = (rest.category || '').toLowerCase();
     const nomesPratos = (rest.dishes || []).map(d => d.name.toLowerCase());
     const nomeRest = (rest.name || '').toLowerCase();
-
     return favoriteFoods.some(fav => {
         const f = fav.toLowerCase();
-        return categoria.includes(f) || 
-               nomeRest.includes(f) || 
-               nomesPratos.some(prato => prato.includes(f));
+        return categoria.includes(f) || nomeRest.includes(f) || nomesPratos.some(prato => prato.includes(f));
     });
 }
 
-// --- BOTÃO SURPREENDA-ME ---
 async function surpreendaMe() {
     const validRestaurants = filtrarRestaurantes(allRestaurants, userPreferences);
-    
-    if (validRestaurants.length === 0) {
-        return showToast("Nenhum restaurante atende às suas restrições.", "error");
-    }
+    if (validRestaurants.length === 0) return showToast("Nenhum restaurante atende às suas restrições.", "error");
 
     let opcoesFinais = validRestaurants.filter(r => restauranteTemTagFavorita(r));
-    if (opcoesFinais.length === 0) {
-        opcoesFinais = validRestaurants;
-    }
+    if (opcoesFinais.length === 0) opcoesFinais = validRestaurants;
 
     const escolhido = opcoesFinais[Math.floor(Math.random() * opcoesFinais.length)];
     const motivo = restauranteTemTagFavorita(escolhido) ? ` (Você ama ${escolhido.category}!)` : '';
-    
     showToast(`Que tal comer em ${escolhido.name} hoje?${motivo}`, "success");
     openRestaurantDetails(escolhido.id);
 }
 
-// --- FEED E RESTAURANTES ---
+// --- FEED ---
 async function carregarSugestoesSidebar() {
     let validRestaurants = filtrarRestaurantes(allRestaurants, userPreferences);
-    
-    // Puxa os favoritos para o topo da sidebar
-    validRestaurants.sort((a, b) => {
-        const aFav = restauranteTemTagFavorita(a) ? 1 : 0;
-        const bFav = restauranteTemTagFavorita(b) ? 1 : 0;
-        return bFav - aFav;
-    });
+    validRestaurants.sort((a, b) => (restauranteTemTagFavorita(b) ? 1 : 0) - (restauranteTemTagFavorita(a) ? 1 : 0));
 
     const sorteados = validRestaurants.slice(0, 4);
     const container = document.getElementById('sidebar-suggestions');
-    
-    if (sorteados.length === 0) {
-        container.innerHTML = `<p class="text-light" style="font-size:12px;">Sem sugestões no momento.</p>`;
-        return;
-    }
+    if (sorteados.length === 0) { container.innerHTML = `<p class="text-light" style="font-size:12px;">Sem sugestões.</p>`; return; }
 
     container.innerHTML = sorteados.map(rest => {
         let img = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=100&q=80';
-        if (rest.reviews && rest.reviews.length > 0 && rest.reviews[0].food_photo_url) {
-            img = rest.reviews[0].food_photo_url;
-        }
+        if (rest.reviews && rest.reviews.length > 0 && rest.reviews[0].food_photo_url) img = rest.reviews[0].food_photo_url;
         return `
             <div class="suggestion-item">
                 <img src="${img}" style="border-radius: 8px;">
                 <div class="suggestion-info">
-                    <strong>${rest.name}</strong>
-                    <span>${rest.category || 'Restaurante'}</span>
+                    <strong>${rest.name}</strong><span>${rest.category || 'Restaurante'}</span>
                 </div>
                 <button class="btn-follow" onclick="openRestaurantDetails(${rest.id})">Ver</button>
             </div>
@@ -278,74 +307,25 @@ async function carregarSugestoesSidebar() {
     }).join('');
 }
 
-async function carregarRecomendacoes() {
-    let validRestaurants = filtrarRestaurantes(allRestaurants, userPreferences);
-    
-    const recs = validRestaurants.sort((a, b) => {
-        const avgA = a.reviews?.length ? a.reviews.reduce((s, r) => s + r.rating, 0) / a.reviews.length : 0;
-        const avgB = b.reviews?.length ? b.reviews.reduce((s, r) => s + r.rating, 0) / b.reviews.length : 0;
-        
-        const aFav = restauranteTemTagFavorita(a) ? 10 : 0;
-        const bFav = restauranteTemTagFavorita(b) ? 10 : 0;
-
-        return (avgB + bFav) - (avgA + aFav);
-    }).slice(0, 5);
-
-    const container = document.getElementById('recommendations-container');
-    if (recs.length === 0) { 
-        container.innerHTML = `<p class="text-light" style="font-size:12px;">Sem recomendações no momento.</p>`; 
-        return; 
-    }
-    
-    const storiesHTML = recs.map(rec => {
-        let imgUrl = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=150&q=80';
-        if (rec.reviews && rec.reviews.length > 0 && rec.reviews[0].food_photo_url) {
-            imgUrl = rec.reviews[0].food_photo_url;
-        }
-        return `
-            <div class="story" onclick="openRestaurantDetails(${rec.id})">
-                <div class="story-ring"><img src="${imgUrl}" class="story-img" alt="${rec.name}"></div>
-                <span>${rec.name}</span>
-            </div>
-        `;
-    });
-    container.innerHTML = storiesHTML.join('');
-}
-
 async function carregarFeed() {
     const feedContainer = document.getElementById('home-feed-container');
     if (!feedContainer) return;
-
     try {
         const validRestaurants = filtrarRestaurantes(allRestaurants, userPreferences);
         let validIds = validRestaurants.length > 0 ? validRestaurants.map(r => r.id) : [];
-
-        if (validIds.length === 0) {
-            feedContainer.innerHTML = `<div class="text-center" style="padding: 40px;"><p class="text-light">Nenhuma avaliação encontrada para suas preferências.</p></div>`;
-            return;
-        }
+        if (validIds.length === 0) { feedContainer.innerHTML = `<p class="text-light text-center">Sem avaliações para suas preferências.</p>`; return; }
 
         const { data, error } = await supabaseClient.from('reviews')
             .select(`*, restaurants (id, name, category), dishes (name), profiles (full_name, avatar_url)`)
-            .in('restaurant_id', validIds)
-            .order('created_at', { ascending: false })
-            .limit(15);
+            .in('restaurant_id', validIds).order('created_at', { ascending: false }).limit(15);
     
         if (error) throw error;
-
-        if (!data || data.length === 0) { 
-            feedContainer.innerHTML = `<div class="text-center" style="padding: 40px;"><p class="text-light">Nenhuma avaliação ainda.</p></div>`; 
-            return; 
-        }
+        if (!data || data.length === 0) { feedContainer.innerHTML = `<p class="text-light text-center">Nenhuma avaliação ainda.</p>`; return; }
     
-        // Reordena o feed para colocar as comidas favoritas no topo
         if (favoriteFoods.length > 0) {
             data.sort((a, b) => {
-                const restA = { category: a.restaurants?.category, name: a.restaurants?.name, dishes: [a.dishes] };
-                const restB = { category: b.restaurants?.category, name: b.restaurants?.name, dishes: [b.dishes] };
-                
-                const aFav = restauranteTemTagFavorita(restA) ? 1 : 0;
-                const bFav = restauranteTemTagFavorita(restB) ? 1 : 0;
+                const aFav = restauranteTemTagFavorita({category: a.restaurants?.category, name: a.restaurants?.name, dishes: [a.dishes]}) ? 1 : 0;
+                const bFav = restauranteTemTagFavorita({category: b.restaurants?.category, name: b.restaurants?.name, dishes: [b.dishes]}) ? 1 : 0;
                 return bFav - aFav;
             });
         }
@@ -355,10 +335,11 @@ async function carregarFeed() {
             const autor = r.profiles?.full_name || 'Alguém';
             const avatarAutor = r.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${autor}&background=random`;
             const dataReview = new Date(r.created_at);
-            const tempo = Math.floor((new Date() - dataReview) / (1000 * 60 * 60 * 24)) === 0 ? 'hoje' : 'ontem';
+            const diffDias = Math.floor((new Date() - dataReview) / (1000 * 60 * 60 * 24));
+            const tempo = diffDias === 0 ? 'hoje' : (diffDias === 1 ? 'ontem' : `há ${diffDias} dias`);
 
             const btnEdit = r.user_id === currentUser.id 
-                ? `<button class="btn-edit-review" onclick="event.stopPropagation(); openEditReviewModal(${r.id}, ${r.rating}, '${r.review_text ? r.review_text.replace(/'/g, "\\'") : ''}')"><i class="fas fa-pen"></i></button>` 
+                ? `<button class="btn-edit-review" onclick="event.stopPropagation(); abrirModalEditarReview(${r.id})"><i class="fas fa-pen"></i></button>` 
                 : '';
 
             return `
@@ -383,58 +364,14 @@ async function carregarFeed() {
                 </div>
             `;
         }).join('');
-
     } catch (err) {
-        feedContainer.innerHTML = `<div class="text-center" style="padding: 40px;"><p class="text-light">Ocorreu um erro ao carregar o feed.</p></div>`; 
+        feedContainer.innerHTML = `<p class="text-light text-center">Erro ao carregar o feed.</p>`; 
     }
 }
 
-// --- ONBOARDING ---
-function selectSinglePreference(element, group) {
-    const parent = element.parentElement;
-    parent.querySelectorAll('.preference-chip').forEach(c => c.classList.remove('active'));
-    element.classList.add('active');
-    if (group === 'diet') tempDiet = element.getAttribute('data-value');
-}
-
-function toggleMultiPreference(element, group) {
-    element.classList.toggle('active');
-    const value = element.getAttribute('data-value');
-    if (element.classList.contains('active')) {
-        if (!tempAvoid.includes(value)) tempAvoid.push(value);
-    } else {
-        tempAvoid = tempAvoid.filter(v => v !== value);
-    }
-}
-
-async function salvarPreferencias() {
-    if (!tempDiet) return showToast("Por favor, selecione sua dieta.", "error");
-    const finalPrefs = [tempDiet, ...tempAvoid];
-
-    try {
-        const { error } = await supabaseClient.from('profiles').update({ food_preferences: finalPrefs }).eq('id', currentUser.id);
-        if (error) throw error;
-
-        userPreferences = finalPrefs;
-        showToast("Preferências salvas com sucesso!", "success");
-        closeModal('onboarding-modal');
-        
-        await carregarSugestoesSidebar();
-        await carregarRecomendacoes();
-        await carregarFeed();
-    } catch (err) {
-        showToast("Erro ao salvar preferências: " + err.message, "error");
-    }
-}
-
-// --- RESTAURANTES E DIÁRIO ---
 async function carregarRestaurantes() {
-    const container = document.getElementById('restaurants-list-container');
     const { data, error } = await supabaseClient
-        .from('restaurants')
-        .select(`id, name, category, dishes (name, is_vegetarian, is_vegan), reviews (rating, food_photo_url)`)
-        .order('name', { ascending: true });
- 
+        .from('restaurants').select(`id, name, category, dishes (name, is_vegetarian, is_vegan), reviews (rating, food_photo_url)`).order('name', { ascending: true });
     if (error || !data) return;
     allRestaurants = data; 
     renderizarRestaurantes();
@@ -450,6 +387,7 @@ function setFiltroCategoria(cat, btn) {
 
 function renderizarRestaurantes() {
     const container = document.getElementById('restaurants-list-container');
+    
     let filtrados = allRestaurants.filter(rest => {
         if (currentCategory === 'Todas') return true;
         if (currentCategory === 'Vegetariano') return rest.dishes && rest.dishes.some(d => d.is_vegetarian || d.is_vegan);
@@ -479,7 +417,7 @@ function renderizarRestaurantes() {
                 <img src="${coverImg}" class="rest-cover" alt="${rest.name}">
                 <div class="rest-content">
                     <div class="rest-header"><h3>${rest.name}</h3></div>
-                    <div class="rest-stats"><span class="star">★ ${mediaNota}</span> · <span>Provado por ${totalReviews} pessoas</span></div>
+                    <div class="rest-stats"><span class="star">★ ${mediaNota}</span> · <span>Provado por ${totalReviews}</span></div>
                     <div class="rest-category">${rest.category || 'Geral'}</div>
                     <div class="rest-dishes-text">${pratosTexto}</div>
                 </div>
@@ -505,7 +443,7 @@ async function carregarDiario() {
     grid.innerHTML = data.map(review => `<div class="grid-item" onclick="openRestaurantDetails(${review.restaurant_id})"><img src="${review.food_photo_url || ''}" alt="Foto"></div>`).join('');
 }
 
-// --- MODAIS E OUTRAS FUNÇÕES ---
+// --- MODAIS ---
 async function openRestaurantDetails(restId) {
     const dishesContainer = document.getElementById('rest-modal-dishes');
     dishesContainer.innerHTML = `<p class="text-light text-center" style="padding: 20px;">Carregando...</p>`;
@@ -525,16 +463,12 @@ async function openRestaurantDetails(restId) {
     document.getElementById('rest-modal-reviews').innerText = `Provado por ${totalReviews} pessoas`;
     document.getElementById('rest-modal-rating').innerText = totalReviews > 0 ? `⭐ ${(reviews.reduce((acc, curr) => acc + curr.rating, 0) / totalReviews).toFixed(1)}` : `⭐ Sem notas`;
 
-    if (totalReviews === 0) {
-        dishesContainer.innerHTML = `<p class="text-light text-center" style="padding: 20px;">Nenhum prato registrado.</p>`;
-        return;
-    }
+    if (totalReviews === 0) { dishesContainer.innerHTML = `<p class="text-light text-center" style="padding: 20px;">Nenhum prato.</p>`; return; }
 
     dishesContainer.innerHTML = reviews.map(r => {
         const autor = r.profiles?.full_name || 'Anônimo';
         const avatar = r.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${autor}&background=random`;
         const preco = r.price_paid ? Number(r.price_paid).toFixed(2).replace('.', ',') : '0,00';
-        
         return `
             <div class="dish-row">
                 <img src="${r.food_photo_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=200&q=80'}" class="dish-row-img">
@@ -566,11 +500,7 @@ function switchView(viewName) {
 
     if (viewName === 'restaurants') {
         setTimeout(async () => {
-            if (!map) {
-                await carregarMapa();
-            } else {
-                map.invalidateSize();
-            }
+            if (!map) { await carregarMapa(); } else { map.invalidateSize(); }
         }, 150);
     }
 }
@@ -598,7 +528,6 @@ function popularSelectRestaurantes() {
     const select = document.getElementById('review-location');
     select.innerHTML = '<option value="" disabled selected>Selecione o restaurante...</option>';
     allRestaurants.forEach(rest => { select.innerHTML += `<option value="${rest.name}">${rest.name}</option>`; });
-    select.innerHTML += `<option value="NEW_RESTAURANT" style="font-weight: bold; color: var(--primary);">+ Novo restaurante</option>`;
 }
 
 function toggleNovoRestaurante(select) {
@@ -621,6 +550,7 @@ function applyCurrencyMask(input) {
 }
  
 async function saveReview() {
+    const btn = document.querySelector('#new-review-modal .btn-primary.btn-block');
     const dish = document.getElementById('review-dish').value;
     const locationSelect = document.getElementById('review-location').value;
     const newRestName = document.getElementById('new-rest-name').value;
@@ -633,12 +563,14 @@ async function saveReview() {
     
     let location = locationSelect === 'NEW_RESTAURANT' ? newRestName : locationSelect;
     if (!file || !dish || !location || !category) return showToast("Preencha os campos obrigatórios.", "error");
+    
+    setBtnLoading(btn, true, "Salvar no Diário");
  
     try {
         const compressedFile = await imageCompression(file, { maxSizeMB: 1, maxWidthOrHeight: 1280, useWebWorker: true });
         const fileName = `foods/${Date.now()}.${compressedFile.name.split('.').pop()}`;
         const { error: uploadError } = await supabaseClient.storage.from('food-images').upload(fileName, compressedFile);
-        if (uploadError) throw new Error("Erro no upload.");
+        if (uploadError) throw new Error("Erro no upload da foto.");
         
         const { data: publicUrl } = supabaseClient.storage.from('food-images').getPublicUrl(fileName);
  
@@ -648,23 +580,31 @@ async function saveReview() {
         if (rest?.id) {
             restId = rest.id;
         } else {
-            const latBase = -26.2333;
-            const lngBase = -51.0833;
+            // USA A NOVA RPC DO BACKEND
+            const latBase = -26.2333; const lngBase = -51.0833;
             const latRandom = latBase + (Math.random() - 0.5) * 0.015;
             const lngRandom = lngBase + (Math.random() - 0.5) * 0.015;
-            
-            const locationWKT = `SRID=4326;POINT(${lngRandom} ${latRandom})`;
 
-            const { data: newRest } = await supabaseClient.from('restaurants').insert([{ 
-                name: location, 
-                category,
-                location: locationWKT
-            }]).select().single();
-            restId = newRest.id;
+            const { data: newRestId, error: restError } = await supabaseClient.rpc('create_restaurant', { 
+                rest_name: location, 
+                rest_category: category, 
+                lat: latRandom, 
+                lng: lngRandom 
+            });
+            
+            if (restError) throw new Error("Erro ao criar restaurante: " + restError.message);
+            restId = newRestId; // A RPC retorna o ID direto
         }
  
         let { data: dishData } = await supabaseClient.from('dishes').select('id').eq('restaurant_id', restId).eq('name', dish).maybeSingle();
-        let dishId = dishData?.id || (await supabaseClient.from('dishes').insert([{ restaurant_id: restId, name: dish, is_vegetarian: document.getElementById('dish-vegetarian').checked, is_vegan: document.getElementById('dish-vegan').checked }]).select().single()).data.id;
+        let dishId;
+        if(dishData?.id) {
+            dishId = dishData.id;
+        } else {
+            const { data: newDish, error: dishError } = await supabaseClient.from('dishes').insert([{ restaurant_id: restId, name: dish, is_vegetarian: document.getElementById('dish-vegetarian').checked, is_vegan: document.getElementById('dish-vegan').checked }]).select().single();
+            if (dishError || !newDish) throw new Error("Erro ao criar prato.");
+            dishId = newDish.id;
+        }
  
         const { error: insertError } = await supabaseClient.from('reviews').insert([{
             user_id: currentUser.id, restaurant_id: restId, dish_id: dishId,
@@ -684,40 +624,33 @@ async function saveReview() {
  
     } catch (error) {
         showToast(error.message, "error");
+    } finally {
+        setBtnLoading(btn, false, "Salvar no Diário");
     }
 }
 
-// --- MAPA (Leaflet) ---
+// --- MAPA ---
 async function carregarMapa() {
     const mapContainer = document.getElementById('map');
     if (!mapContainer || typeof L === 'undefined') return;
 
     if (!map) {
         map = L.map('map').setView([-26.2333, -51.0833], 14); 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
     }
-
     setTimeout(() => map.invalidateSize(), 100);
 
     const localizacoesFixas = {
-        'Burger do Zé': [-26.2286, -51.0869],
-        'Sushi Yamato': [-26.2389, -51.0783],
-        'Cantina da Nonna': [-26.2200, -51.0800],
-        'Churrascaria Gaúcha': [-26.2450, -51.0750],
-        'Sushi União': [-26.2400, -51.0800],
-        'Burger da Fronteira': [-26.2250, -51.0850],
-        'Pizzaria Forno a Lenha': [-26.2180, -51.0820],
-        'Restaurante do Porto': [-26.2420, -51.0720],
+        'Burger do Zé': [-26.2286, -51.0869], 'Sushi Yamato': [-26.2389, -51.0783],
+        'Cantina da Nonna': [-26.2200, -51.0800], 'Churrascaria Gaúcha': [-26.2450, -51.0750],
+        'Sushi União': [-26.2400, -51.0800], 'Burger da Fronteira': [-26.2250, -51.0850],
+        'Pizzaria Forno a Lenha': [-26.2180, -51.0820], 'Restaurante do Porto': [-26.2420, -51.0720],
         'Vegano do Vale': [-26.2333, -51.0833]
     };
 
     const { data: rpcData } = await supabaseClient.rpc('get_restaurants_with_coords');
     const coordsMap = {};
-    if (rpcData) {
-        rpcData.forEach(r => { coordsMap[r.id] = { lat: r.lat, lng: r.lng }; });
-    }
+    if (rpcData) rpcData.forEach(r => { coordsMap[r.id] = { lat: r.lat, lng: r.lng }; });
     
     mapMarkers.forEach(marker => map.removeLayer(marker));
     mapMarkers = [];
@@ -728,40 +661,26 @@ async function carregarMapa() {
 
         if (!lat || !lng) {
             if (localizacoesFixas[rest.name]) {
-                lat = localizacoesFixas[rest.name][0];
-                lng = localizacoesFixas[rest.name][1];
+                lat = localizacoesFixas[rest.name][0]; lng = localizacoesFixas[rest.name][1];
             } else {
-                const latBase = -26.2333;
-                const lngBase = -51.0833;
-                lat = latBase + (Math.random() - 0.5) * 0.015;
-                lng = lngBase + (Math.random() - 0.5) * 0.015;
+                lat = -26.2333 + (Math.random() - 0.5) * 0.015; lng = -51.0833 + (Math.random() - 0.5) * 0.015;
             }
         }
 
         if (lat && lng) {
             const marker = L.marker([lat, lng]).addTo(map);
-            marker.bindPopup(`
-                <strong>${rest.name}</strong><br>
-                ${rest.category || ''}<br>
-                <button onclick="openRestaurantDetails(${rest.id})" 
-                        style="margin-top:8px; cursor:pointer; background:#ff5a36; color:white; border:none; padding:6px 12px; border-radius:6px;">
-                    Ver detalhes
-                </button>
-            `);
+            marker.bindPopup(`<strong>${rest.name}</strong><br>${rest.category || ''}<br>
+                <button onclick="openRestaurantDetails(${rest.id})" style="margin-top:8px; cursor:pointer; background:#ff5a36; color:white; border:none; padding:6px 12px; border-radius:6px;">Ver detalhes</button>`);
             mapMarkers.push(marker);
         }
     });
 
-    if (mapMarkers.length > 0) {
-        const group = new L.featureGroup(mapMarkers);
-        map.fitBounds(group.getBounds().pad(0.2));
-    }
+    if (mapMarkers.length > 0) map.fitBounds(new L.featureGroup(mapMarkers).getBounds().pad(0.2));
 }
 
-// --- EDIÇÃO DE PERFIL ---
+// --- PERFIL E ONBOARDING ---
 function openEditProfileModal() {
-    const nome = document.getElementById('profile-name-display').textContent;
-    document.getElementById('edit-profile-name').value = nome;
+    document.getElementById('edit-profile-name').value = document.getElementById('profile-name-display').textContent;
     document.getElementById('avatar-preview-area').innerHTML = `<img src="${document.getElementById('profile-avatar-img').src}">`;
     openModal('edit-profile-modal');
 }
@@ -770,76 +689,124 @@ function previewAvatar(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
-        reader.onload = function(e) {
-            document.getElementById('avatar-preview-area').innerHTML = `<img src="${e.target.result}">`;
-        }
+        reader.onload = function(e) { document.getElementById('avatar-preview-area').innerHTML = `<img src="${e.target.result}">`; }
         reader.readAsDataURL(file);
     }
 }
 
 async function salvarPerfil() {
+    const btn = document.querySelector('#edit-profile-modal .btn-primary');
     const novoNome = document.getElementById('edit-profile-name').value;
     const file = document.getElementById('avatar-upload').files[0];
     let novaUrl = document.getElementById('profile-avatar-img').src;
 
     if (!novoNome) return showToast("O nome não pode ficar vazio.", "error");
+    setBtnLoading(btn, true, "Salvar Alterações");
 
     try {
         if (file) {
-            const options = { maxSizeMB: 0.5, maxWidthOrHeight: 400, useWebWorker: true };
-            const compressedFile = await imageCompression(file, options);
+            const compressedFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 400, useWebWorker: true });
             const fileName = `${currentUser.id}-${Date.now()}.jpeg`;
-            
             const { error: uploadError } = await supabaseClient.storage.from('avatars').upload(fileName, compressedFile);
-            if (uploadError) throw new Error("Erro no upload: " + uploadError.message);
-            
-            const { data: publicUrl } = supabaseClient.storage.from('avatars').getPublicUrl(fileName);
-            novaUrl = publicUrl.publicUrl;
+            if (uploadError) throw new Error("Erro no upload da foto.");
+            novaUrl = supabaseClient.storage.from('avatars').getPublicUrl(fileName).data.publicUrl;
         }
 
-        const { error } = await supabaseClient.from('profiles').update({ 
-            full_name: novoNome,
-            avatar_url: novaUrl
-        }).eq('id', currentUser.id);
-
+        const { error } = await supabaseClient.from('profiles').update({ full_name: novoNome, avatar_url: novaUrl }).eq('id', currentUser.id);
         if (error) throw error;
 
         showToast("Perfil atualizado!", "success");
         closeModal('edit-profile-modal');
         carregarPerfil();
         carregarFeed();
-
     } catch (error) {
         showToast(error.message, "error");
+    } finally {
+        setBtnLoading(btn, false, "Salvar Alterações");
     }
 }
 
-// --- EDIÇÃO DE REVIEW ---
-function openEditReviewModal(id, rating, text) {
+function selectSinglePreference(element, group) {
+    const parent = element.parentElement;
+    parent.querySelectorAll('.preference-chip').forEach(c => c.classList.remove('active'));
+    element.classList.add('active');
+    if (group === 'diet') tempDiet = element.getAttribute('data-value');
+}
+
+function toggleMultiPreference(element, group) {
+    element.classList.toggle('active');
+    const value = element.getAttribute('data-value');
+    if (element.classList.contains('active')) { if (!tempAvoid.includes(value)) tempAvoid.push(value); } 
+    else { tempAvoid = tempAvoid.filter(v => v !== value); }
+}
+
+async function salvarPreferencias() {
+    if (!tempDiet) return showToast("Por favor, selecione sua dieta.", "error");
+    const btn = document.querySelector('#onboarding-modal .btn-primary');
+    setBtnLoading(btn, true, "Salvar e começar a explorar");
+
+    try {
+        const finalPrefs = [tempDiet, ...tempAvoid];
+        const { error } = await supabaseClient.from('profiles').update({ food_preferences: finalPrefs }).eq('id', currentUser.id);
+        if (error) throw error;
+
+        userPreferences = finalPrefs;
+        showToast("Preferências salvas com sucesso!", "success");
+        closeModal('onboarding-modal');
+        await carregarSugestoesSidebar();
+        await carregarRecomendacoes();
+        await carregarFeed();
+    } catch (err) {
+        showToast("Erro ao salvar preferências: " + err.message, "error");
+    } finally {
+        setBtnLoading(btn, false, "Salvar e começar a explorar");
+    }
+}
+
+async function carregarRecomendacoes() {
+    let validRestaurants = filtrarRestaurantes(allRestaurants, userPreferences);
+    const recs = validRestaurants.sort((a, b) => {
+        const avgA = a.reviews?.length ? a.reviews.reduce((s, r) => s + r.rating, 0) / a.reviews.length : 0;
+        const avgB = b.reviews?.length ? b.reviews.reduce((s, r) => s + r.rating, 0) / b.reviews.length : 0;
+        const aFav = restauranteTemTagFavorita(a) ? 10 : 0; const bFav = restauranteTemTagFavorita(b) ? 10 : 0;
+        return (avgB + bFav) - (avgA + aFav);
+    }).slice(0, 5);
+
+    const container = document.getElementById('recommendations-container');
+    if (recs.length === 0) { container.innerHTML = `<p class="text-light" style="font-size:12px;">Sem recomendações.</p>`; return; }
+    container.innerHTML = recs.map(rec => {
+        let imgUrl = 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=150&q=80';
+        if (rec.reviews && rec.reviews.length > 0 && rec.reviews[0].food_photo_url) imgUrl = rec.reviews[0].food_photo_url;
+        return `<div class="story" onclick="openRestaurantDetails(${rec.id})"><div class="story-ring"><img src="${imgUrl}" class="story-img" alt="${rec.name}"></div><span>${rec.name}</span></div>`;
+    }).join('');
+}
+
+async function abrirModalEditarReview(id) {
+    const { data, error } = await supabaseClient.from('reviews').select('rating, review_text').eq('id', id).single();
+    if (error || !data) return showToast("Erro ao carregar avaliação.", "error");
+    
     document.getElementById('edit-review-id').value = id;
-    document.getElementById('edit-review-rating').value = rating;
-    document.getElementById('edit-review-text').value = text;
+    document.getElementById('edit-review-rating').value = data.rating;
+    document.getElementById('edit-review-text').value = data.review_text || '';
     openModal('edit-review-modal');
 }
 
 async function salvarEdicaoReview() {
+    const btn = document.querySelector('#edit-review-modal .btn-primary');
     const id = document.getElementById('edit-review-id').value;
     const rating = parseInt(document.getElementById('edit-review-rating').value);
     const text = document.getElementById('edit-review-text').value;
+    setBtnLoading(btn, true, "Atualizar Avaliação");
 
     try {
-        const { error } = await supabaseClient.from('reviews').update({ 
-            rating: rating, review_text: text 
-        }).eq('id', id);
-
+        const { error } = await supabaseClient.from('reviews').update({ rating: rating, review_text: text }).eq('id', id);
         if (error) throw error;
-
         showToast("Avaliação atualizada!", "success");
         closeModal('edit-review-modal');
-        carregarFeed();
-        carregarDiario();
-        carregarRestaurantes();
+        carregarFeed(); carregarDiario(); carregarRestaurantes();
     } catch (error) {
         showToast("Erro ao editar: " + error.message, "error");
+    } finally {
+        setBtnLoading(btn, false, "Atualizar Avaliação");
     }
 }

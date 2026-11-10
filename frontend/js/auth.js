@@ -13,44 +13,63 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.remove(), 3500);
 }
 
-// Verifica a sessão de forma segura para não criar loop
 async function checkAuthState() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     const isAuthPage = window.location.pathname.includes('login.html') || window.location.pathname.includes('register.html');
 
     if (session && isAuthPage) {
-        window.location.href = 'index.html'; // Se logado e na tela de login, vai pro app
+        window.location.href = 'index.html';
     } else if (!session && !isAuthPage) {
-        window.location.href = 'login.html'; // Se não logado e no app, vai pro login
+        window.location.href = 'login.html';
     }
 }
 checkAuthState();
 
 // --- LÓGICA DE LOGIN ---
 async function fazerLogin() {
+    const btn = document.querySelector('.btn-auth-primary');
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
     if (!email || !password) return showToast("Preencha e-mail e senha.", "error");
 
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) showToast("Erro no login: " + error.message, "error");
+    // Previne clique duplo
+    if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...'; }
+
+    try {
+        const { error, data } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        
+        // REDIRECIONAMENTO NO SUCESSO
+        window.location.href = 'index.html';
+        
+    } catch (error) {
+        showToast("Erro no login: " + error.message, "error");
+        if(btn) { btn.disabled = false; btn.innerHTML = 'Entrar com e-mail'; }
+    }
 }
 
 // --- LÓGICA DE CADASTRO ---
 async function fazerCadastro() {
+    const btn = document.querySelector('.btn-auth-primary');
     const name = document.getElementById('reg-name').value;
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
     if (!name || !email || !password) return showToast("Preencha todos os campos.", "error");
 
-    const { error } = await supabaseClient.auth.signUp({ 
-        email, password, options: { data: { full_name: name } } 
-    });
-    
-    if (error) {
-        showToast("Erro ao cadastrar: " + error.message, "error");
-    } else {
+    if(btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando...'; }
+
+    try {
+        const { error } = await supabaseClient.auth.signUp({ 
+            email, password, options: { data: { full_name: name } } 
+        });
+        
+        if (error) throw error;
+
         showToast("Conta criada com sucesso! Faça login.", "success");
         setTimeout(() => window.location.href = 'login.html', 2000);
+        
+    } catch (error) {
+        showToast("Erro ao cadastrar: " + error.message, "error");
+        if(btn) { btn.disabled = false; btn.innerHTML = 'Criar conta'; }
     }
 }
